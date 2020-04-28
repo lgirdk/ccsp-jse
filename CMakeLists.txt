@@ -49,7 +49,7 @@ else(BUILD_RDK)
 endif(BUILD_RDK)
 
 # in keeping with the small footprint goal, optimize for size (-Os)
-set(CMAKE_C_FLAGS_RELEASE "-Os") 
+set(CMAKE_C_FLAGS_RELEASE "-Os")
 
 set(CMAKE_C_FLAGS_DEBUG "-g -O0 -fno-inline")
 
@@ -57,7 +57,7 @@ include_directories(
 	source
   source/duktape)
 
-set(JST_SOURCES 
+set(JST_SOURCES
   source/jst_parser.c
   source/jst_session.c
   source/jst_post.c
@@ -72,10 +72,6 @@ set(JST_SOURCES
   source/duktape/duk_module_duktape.c)
 
 set(JST_LIBS "-lm -lcrypto -lsso")
-
-if(WANT_LIBINTL)
-  set(JST_LIBS "${JST_LIBS} -lintl")
-endif(WANT_LIBINTL)
 
 if(BUILD_RDK)
   set(JST_SOURCES ${JST_SOURCES} source/jst_cosa.c)
