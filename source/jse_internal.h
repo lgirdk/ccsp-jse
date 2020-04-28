@@ -20,6 +20,7 @@
 #define CCSP_DUKTAPE_INTERNAL_H
 
 #include <duktape.h>
+#include "jse_debug.h"
 
 #define RETURN_LSTRING(res, len) { duk_push_lstring(ctx, res, len); return 1; }
 #define RETURN_STRING(res) { duk_push_string(ctx, res); return 1; }
@@ -27,9 +28,25 @@
 #define RETURN_FALSE { duk_push_false(ctx); return 1; }
 #define RETURN_LONG(res) { duk_push_number(ctx, res); return 1; }
 
+/* If JSE debugging is enabled disable the legacy debugging and map the
+   logging function to JSE_DEBUG. */
+
+#ifndef JSE_DEBUG_ENABLED
 void init_logger();
 void CosaPhpExtLog(const char* format, ...);
+#else
+
+#define init_logger(...)
+#define CosaPhpExtLog JSE_DEBUG
+
+#endif
+
 int parse_parameter(const char* func, duk_context *ctx, const char* types, ...);
-int read_file(const char *filename, char** bufout, size_t* lenout);
+
+/* read_file() has been superceded */
+
+#ifndef read_file
+#define read_file(f, pb, ps) ((int)jse_read_file(f, pb, ps))
+#endif
 
 #endif

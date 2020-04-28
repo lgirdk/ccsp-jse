@@ -30,7 +30,7 @@
 #ifdef COMCAST_SSO
 #include "sso_api.h"
 #endif /* COMCAST_SSO */
-#include "jst_internal.h"
+#include "jse_internal.h"
 
 #define COMPONENT_NAME              "ccsp.phpextension"
 #define CONF_FILENAME               "/tmp/ccsp_msg.cfg"
@@ -1144,11 +1144,11 @@ static const duk_function_list_entry ccsp_cosa_funcs[] = {
   { NULL, NULL, 0 }
 };
 
-duk_ret_t ccsp_cosa_module_open(duk_context *ctx)
+duk_int_t ccsp_cosa_module_open(duk_context *ctx)
 {
   cosa_init();
   duk_push_object(ctx);
   duk_put_function_list(ctx, -1, ccsp_cosa_funcs);
-  return 1;
+  return 0;
 }
 

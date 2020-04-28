@@ -19,7 +19,7 @@
 cmake_minimum_required(VERSION 2.8)
 cmake_policy(SET CMP0048 NEW)
 
-project(jst
+project(jse
 	VERSION 1.0.0)
 
 enable_testing()
@@ -34,12 +34,7 @@ endif()
 # add duktape recommended cflags and cmdline options we need
 set (CMAKE_C_FLAGS
   "${CMAKE_C_FLAGS} \
-  -Wall -Wextra -fstrict-aliasing -fomit-frame-pointer -std=gnu99 \
-  -DDUK_USE_PROMISE_BUILTIN \
-  -DDUK_CMDLINE_PRINTALERT_SUPPORT \
-  -DDUK_CMDLINE_CONSOLE_SUPPORT \
-  -DDUK_CMDLINE_LOGGING_SUPPORT \
-  -DDUK_CMDLINE_MODULE_SUPPORT")
+  -Wall -Wextra -fstrict-aliasing -fomit-frame-pointer -std=gnu99")
 
 if(BUILD_RDK)
   message(STATUS, "rdk build")
@@ -54,33 +49,29 @@ set(CMAKE_C_FLAGS_RELEASE "-Os")
 set(CMAKE_C_FLAGS_DEBUG "-g -O0 -fno-inline")
 
 include_directories(
-	source
-  source/duktape)
+  source)
 
-set(JST_SOURCES
-  source/jst_parser.c
-  source/jst_session.c
-  source/jst_post.c
-  source/jst_functions.c
-  source/jst_internal.c
-  source/jst_extensions.c
-  source/duktape/duk_cmdline.c
-  source/duktape/duk_console.c
-  source/duktape/duk_logging.c
-  source/duktape/duk_module_duktape.c)
+set(JSE_SOURCES
+  source/jse_debug.c
+  source/jse_common.c
+  source/jse_jscommon.c
+  source/jse_main.c)
 
-set(JST_LIBS "lduktape -lm -lcrypto -lsso")
+set(JSE_LIBS "-lqdecoder -lduktape -lm")
 
 if(BUILD_RDK)
-  set(JST_SOURCES ${JST_SOURCES} source/jst_cosa.c)
-  set(JST_LIBS "${JST_LIBS} -lccsp_common")
+  set(JSE_SOURCES
+    ${JSE_SOURCES}
+    source/jse_internal.c
+    source/jse_cosa.c)
+  set(JSE_LIBS "${JSE_LIBS} -lccsp_common -ldbus-1")
 endif(BUILD_RDK)
 
-add_executable(jst ${JST_SOURCES})
-target_link_libraries(jst ${JST_LIBS})
+add_executable(jse ${JSE_SOURCES})
+target_link_libraries(jse ${JSE_LIBS})
 
 if(BUILD_RDK)
-  install (TARGETS jst
+  install (TARGETS jse
 	  RUNTIME DESTINATION sbin)
 endif(BUILD_RDK)
 

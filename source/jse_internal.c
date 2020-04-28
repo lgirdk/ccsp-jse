@@ -22,6 +22,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+/* If JSE debugging is enabled disable the legacy debugging and map the
+   logging function to JSE_DEBUG. */
+
+#ifndef JSE_DEBUG_ENABLED
 #define COSA_PHP_EXT_LOG_FILE_NAME  "/var/log/cosa_php_ext.log"
 #define COSA_PHP_EXT_DEBUG_FILE "/tmp/cosa_php_debug"
 static int debugFlag = 0;
@@ -73,6 +77,7 @@ void init_logger()
     fclose(fp);
   }
 }
+#endif
 
 int parse_parameter(const char* func, duk_context *ctx, const char* types, ...)
 {
@@ -161,6 +166,7 @@ int parse_parameter(const char* func, duk_context *ctx, const char* types, ...)
   return success;
 }
 
+#ifndef read_file
 int read_file(const char *filename, char** bufout, size_t* lenout)
 {
   FILE* pf;
@@ -180,7 +186,7 @@ int read_file(const char *filename, char** bufout, size_t* lenout)
     return 0;
   }
 
-  fseek(pf, 0, SEEK_END); 
+  fseek(pf, 0, SEEK_END);
   size = ftell(pf);
   rewind(pf);
 
@@ -209,4 +215,4 @@ int read_file(const char *filename, char** bufout, size_t* lenout)
   *lenout = size;
   return *lenout;
 }
-
+#endif
