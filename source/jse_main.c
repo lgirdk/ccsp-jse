@@ -29,6 +29,20 @@ extern duk_int_t ccsp_cosa_module_open(duk_context *ctx);
 
 #define JSE_REQUEST_OBJECT_NAME "Request"
 
+/* List of HTTP status codes */
+#define HTTP_STATUS_OK                     200
+#define HTTP_STATUS_CREATED                201
+#define HTTP_STATUS_ACCEPTED               202
+#define HTTP_STATUS_NO_CONTENT             204
+#define HTTP_STATUS_BAD_REQUEST            400
+#define HTTP_STATUS_UNAUTHORIZED           401
+#define HTTP_STATUS_FORBIDDEN              403
+#define HTTP_STATUS_NOT_FOUND              404
+#define HTTP_STATUS_METHOD_NOT_ALLOWED     405
+#define HTTP_STATUS_IM_A_TEAPOT            418
+#define HTTP_STATUS_INTERNAL_SERVER_ERROR  500
+#define HTTP_STATUS_NOT_IMPLEMENTED        501
+
 /* The requests to process */
 static bool process_get     = false;
 static bool process_post    = false;
@@ -222,6 +236,73 @@ static int header_set(char * name, char * value)
 }
 
 /**
+ * Returns an appropriate HTTP status message for a status code.
+ * 
+ * @param status the status code.
+ * @return the message.
+ */
+static char* msg_for_http_status(int status)
+{
+    char * msg = NULL;
+
+    switch (status)
+    {
+        case HTTP_STATUS_ACCEPTED:
+            msg = "Accepted";
+            break;
+        case HTTP_STATUS_BAD_REQUEST:
+            msg = "Bad Request";
+            break;
+        case HTTP_STATUS_CREATED:
+            msg = "Created";
+            break;
+        case HTTP_STATUS_FORBIDDEN:
+            msg = "Forbidden";
+            break;
+        case HTTP_STATUS_IM_A_TEAPOT:
+            msg = "I'm a teapot";
+            break;
+        case HTTP_STATUS_INTERNAL_SERVER_ERROR:
+            msg = "Internal Server Error";
+            break;
+        case HTTP_STATUS_METHOD_NOT_ALLOWED:
+            msg = "Method Not Allowed";
+            break;
+        case HTTP_STATUS_NO_CONTENT:
+            msg = "No Content";
+            break;
+        case HTTP_STATUS_NOT_FOUND:
+            msg = "Not Found";
+            break;
+        case HTTP_STATUS_NOT_IMPLEMENTED:
+            msg = "Not Implemented";
+            break;
+        case HTTP_STATUS_OK:
+            msg = "OK";
+            break;
+        case HTTP_STATUS_UNAUTHORIZED:
+            msg = "Unauthorized";
+            break;
+        default:
+            JSE_WARNING("Unrecognised status code: %d", status)
+            msg = "Unrecognised Status Code";
+            break;
+    }
+
+    return msg;
+}
+
+/**
+ * Returns the status line to the server.
+ * 
+ * @param status the HTTP status.
+ */
+static void return_http_status(int status)
+{
+    printf("Status: %d %s\r\n", status, msg_for_http_status(status));
+}
+
+/**
  * Returns an error to the server.
  *
  * @param jse_ctx the jse context.
@@ -241,16 +322,14 @@ static void return_error(jse_context_t *jse_ctx, int status, const char* mimetyp
     {
         strcpy(buffer, 
             "<html><head><title>Internal server error</title></head><body>Buffer overflow in the error handler!</body></html>\r\n");
-        status = 500;
+        status = HTTP_STATUS_INTERNAL_SERVER_ERROR;
     }
     va_end(ap);
 
     JSE_ERROR(buffer);
 
     /* Setting the content type terminates the header so output the status now */
-
-    /* Not supported */
-    printf("Status: %d\r\n", status);
+    return_http_status(status);
 
     qcgires_setcontenttype(jse_ctx->req, mimetype);
     printf("%s\r\n", buffer);
@@ -285,7 +364,7 @@ static void set_any_cookies(jse_context_t *jse_ctx)
  */
 static void return_response(jse_context_t *jse_ctx, int status, const char* contenttype)
 {
-    printf("Status: %d\r\n", status);
+    return_http_status(status);
 
     /* Iterate through the headers */
     while (first_header_item != NULL)
@@ -333,7 +412,7 @@ static void handle_fatal_error(void* userdata, const char *msg)
     /* Only output HTTP data if we have a qdecoder request. */
     if (jse_ctx != NULL && jse_ctx->req != NULL)
     {
-        return_error(jse_ctx, 500, "text/html", 
+        return_error(jse_ctx, HTTP_STATUS_INTERNAL_SERVER_ERROR, "text/html", 
             "<html><head><title>Internal server error</title></head><body>%s</body></html>", msg);
 
         jse_ctx->req->free(jse_ctx->req);
@@ -579,7 +658,7 @@ static duk_ret_t do_setHTTPStatus(duk_context * ctx)
 
     if (duk_is_number(ctx, -1))
     {
-        http_status = (int)duk_get_int_default(ctx, -1, 200);
+        http_status = (int)duk_get_int_default(ctx, -1, HTTP_STATUS_OK);
 
         JSE_DEBUG("status = %d", http_status)
 
@@ -1030,13 +1109,13 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             if (ret == 0)
             {
                 return_response(jse_ctx, 
-                     http_status != 0 ? http_status : 200, 
+                     http_status != 0 ? http_status : HTTP_STATUS_OK, 
                      http_contenttype != NULL ? http_contenttype : "text/plain");
             }
             else
             {
                 /* In case of an error, an error object is on the duktape stack */
-                return_error(jse_ctx, 500, "text/html", 
+                return_error(jse_ctx, HTTP_STATUS_INTERNAL_SERVER_ERROR, "text/html", 
                     "<html><head><title>Internal server error</title></head><body>%s</body></html>",
                     duk_safe_to_string(jse_ctx->ctx, -1));
 
@@ -1049,12 +1128,12 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             jse_ctx->req = qcgireq_parse(jse_ctx->req, Q_CGI_GET);
             if (jse_ctx->req != NULL)
             {
-                return_error(jse_ctx, 403, "text/html", 
-                    "<html><head><title>Method not supported</title></head><body>Method not supported</body></html>");
+                return_error(jse_ctx, HTTP_STATUS_METHOD_NOT_ALLOWED, "text/html", 
+                    "<html><head><title>Method not allowed</title></head><body>Method not allowed</body></html>");
             }
             else
             {
-                JSE_ERROR("Method not supported!");
+                JSE_ERROR("Method not allowed!");
             }
 
             ret = DUK_RET_ERROR;
