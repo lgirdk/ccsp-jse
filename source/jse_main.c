@@ -240,7 +240,7 @@ static void return_error(jse_context_t *jse_ctx, int status, const char* mimetyp
     if (len >= (int)sizeof(buffer))
     {
         strcpy(buffer, 
-            "<html><head><title>Error 500: Internal server error</title></head><body>Buffer overflow in the error handler!</body></html>\r\n");
+            "<html><head><title>Internal server error</title></head><body>Buffer overflow in the error handler!</body></html>\r\n");
         status = 500;
     }
     va_end(ap);
@@ -334,7 +334,7 @@ static void handle_fatal_error(void* userdata, const char *msg)
     if (jse_ctx != NULL && jse_ctx->req != NULL)
     {
         return_error(jse_ctx, 500, "text/html", 
-            "<html><head>Error 500: Internal server error</title></head><body>%s</body></html>", msg);
+            "<html><head><title>Internal server error</title></head><body>%s</body></html>", msg);
 
         jse_ctx->req->free(jse_ctx->req);
         jse_ctx->req = NULL;
@@ -376,6 +376,9 @@ static void cleanup_duktape(jse_context_t *jse_ctx)
 /**
  * Runs JavaScript code provided via stdin.
  *
+ * In case of an Error, an Error object remains on the stack when the
+ * function exits.
+ * 
  * @param jse_ctx the jse context.
  * @return an error status or 0.
  */
@@ -442,21 +445,23 @@ static duk_int_t run_stdin(jse_context_t *jse_ctx)
 
     *(buffer + size) = '\0';
 
-    ret = jse_run_buffer(jse_ctx, buffer, size);
+    if (jse_run_buffer(jse_ctx, buffer, size) == DUK_EXEC_SUCCESS)
+    {
+        ret = 0;
+    }
 
     free(buffer);
 
     return ret;
         
 error:
-    JSE_ERROR("Error: \"%s\" Filename: \"%s\"", strerror(errno), jse_ctx->filename)
+    JSE_ERROR("Error: %s", strerror(errno))
+    duk_push_error_object(jse_ctx->ctx, DUK_ERR_ERROR, "%s", strerror(errno));
 
     if (buffer != NULL)
     {
         free(buffer);
     }
-
-    /* TODO: Handle error */
 
     return DUK_RET_ERROR;
 }
@@ -464,19 +469,32 @@ error:
 /**
  * Runs JavaScript code provided in a file.
  *
+ * In case of an Error, an Error object remains on the stack when the
+ * function exits.
+ * 
  * @param jse_ctx the jse context.
  * @return an error status or 0.
  */
 static duk_int_t run_file(jse_context_t *jse_ctx)
 {
+    duk_int_t ret = DUK_ERR_ERROR;
     char *buffer = NULL;
     size_t size = 0;
-    duk_int_t ret = -1;
 
     if (jse_read_file(jse_ctx->filename, &buffer, &size) > 0)
     {
-        ret = jse_run_buffer(jse_ctx, buffer, size);
+        if (jse_run_buffer(jse_ctx, buffer, size) == DUK_EXEC_SUCCESS)
+        {
+            ret = 0;
+        }
+
         free(buffer);
+    }
+    else
+    {
+        JSE_ERROR("Error: %s: %s", jse_ctx->filename, strerror(errno))
+        duk_push_error_object(jse_ctx->ctx, DUK_ERR_ERROR, 
+            "%s: %s", jse_ctx->filename, strerror(errno));
     }
 
     return ret;
@@ -493,9 +511,9 @@ static duk_int_t run_file(jse_context_t *jse_ctx)
  * @param ctx the duktape context.
  * @return the number of values on the stack or -1 for an error.
  */
-static duk_int_t do_print(duk_context *ctx)
+static duk_ret_t do_print(duk_context *ctx)
 {
-    duk_int_t ret = -1;
+    duk_ret_t ret = DUK_RET_ERROR;
 
     JSE_ASSERT(ctx != NULL)
 
@@ -526,14 +544,13 @@ static duk_int_t do_print(duk_context *ctx)
             }
             else 
             {
-                JSE_ERROR("calloc() failed: %s", strerror(errno));
-                (void) duk_error(ctx, DUK_ERR_ERROR, "Internal error!");
+                JSE_ERROR("calloc() failed: %s", strerror(errno))
+                free(string);
             }
         }
         else 
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno));
-            (void) duk_error(ctx, DUK_ERR_ERROR, "Internal error!");
+            JSE_ERROR("strdup() failed: %s", strerror(errno))
         }
     }
     else
@@ -556,9 +573,9 @@ static duk_int_t do_print(duk_context *ctx)
  * @param ctx the duktape context.
  * @return the number of values on the stack or -1 for an error.
  */
-static duk_int_t do_setHTTPStatus(duk_context * ctx)
+static duk_ret_t do_setHTTPStatus(duk_context * ctx)
 {
-    duk_int_t ret = -1;
+    duk_ret_t ret = DUK_RET_ERROR;
 
     if (duk_is_number(ctx, -1))
     {
@@ -571,7 +588,8 @@ static duk_int_t do_setHTTPStatus(duk_context * ctx)
     }
     else
     {
-        (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Invalid argument: status");
+        JSE_ERROR("Invalid argument!")
+        ret = DUK_RET_TYPE_ERROR;
     }
 
     return ret;
@@ -586,9 +604,9 @@ static duk_int_t do_setHTTPStatus(duk_context * ctx)
  * @param ctx the duktape context.
  * @return the number of values on the stack or -1 for an error.
  */
-static duk_int_t do_setContentType(duk_context * ctx)
+static duk_ret_t do_setContentType(duk_context * ctx)
 {
-    duk_int_t ret = -1;
+    duk_ret_t ret = DUK_RET_ERROR;
 
     if (duk_is_string(ctx, -1))
     {
@@ -609,13 +627,13 @@ static duk_int_t do_setContentType(duk_context * ctx)
         }
         else 
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno));
-            (void) duk_error(ctx, DUK_ERR_ERROR, "Internal error!");
+            JSE_ERROR("strdup() failed: %s", strerror(errno))
         }
     }
     else
     {
-        (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Invalid argument: mimetype");
+        JSE_ERROR("Invalid argument \"mimetype\"!")
+        ret = DUK_RET_TYPE_ERROR;
     }
 
     return ret;
@@ -632,8 +650,9 @@ static duk_int_t do_setContentType(duk_context * ctx)
  * @param ctx the duktape context.
  * @return the number of values on the stack or -1 for an error.
  */
-static duk_int_t do_setCookie(duk_context * ctx)
+static duk_ret_t do_setCookie(duk_context * ctx)
 {
+    duk_ret_t ret = DUK_RET_ERROR;
     char * name = NULL;
     char * value = NULL;
     int expire_secs = 0;
@@ -646,15 +665,14 @@ static duk_int_t do_setCookie(duk_context * ctx)
         name = strdup(duk_safe_to_string(ctx, -6));
         if (name == NULL)
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno));
-            (void) duk_error(ctx, DUK_ERR_ERROR, "Internal error!");
-
+            JSE_ERROR("strdup() failed: %s", strerror(errno))
             goto error;
         }
     }
     else
     {
-        (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Invalid argument: name (%d)", duk_get_type(ctx, -6));
+        JSE_ERROR("Invalid argument \"name\" (%d)", duk_get_type(ctx, -6))
+        ret = DUK_RET_TYPE_ERROR;
         goto error;
     }
 
@@ -663,15 +681,14 @@ static duk_int_t do_setCookie(duk_context * ctx)
         value = strdup(duk_safe_to_string(ctx, -5));
         if (value == NULL)
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno));
-            (void) duk_error(ctx, DUK_ERR_ERROR, "Internal error!");
-
+            JSE_ERROR("strdup() failed: %s", strerror(errno))
             goto error;
         }
     }
     else
     {
-        (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Invalid argument: value (%d)", duk_get_type(ctx, -5));
+        JSE_ERROR("Invalid argument \"value\" (%d)", duk_get_type(ctx, -5))
+        ret = DUK_RET_TYPE_ERROR;
         goto error;
     }
 
@@ -681,7 +698,8 @@ static duk_int_t do_setCookie(duk_context * ctx)
     }
     else
     {
-        (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Invalid argument: expire_secs (%d)", duk_get_type(ctx, -4));
+        JSE_ERROR("Invalid argument \"expire_secs\" (%d)", duk_get_type(ctx, -4))
+        ret = DUK_RET_TYPE_ERROR;
         goto error;
     }
 
@@ -692,15 +710,13 @@ static duk_int_t do_setCookie(duk_context * ctx)
             path = strdup(duk_safe_to_string(ctx, -3));
             if (path == NULL)
             {
-                JSE_ERROR("strdup() failed: %s", strerror(errno));
-                (void) duk_error(ctx, DUK_ERR_ERROR, "Internal error!");
-
+                JSE_ERROR("strdup() failed: %s", strerror(errno))
                 goto error;
             }
         }
         else
         {
-            (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Invalid argument: path (%d)", duk_get_type(ctx, -3));
+            JSE_ERROR("Invalid argument \"path\" (%d)", duk_get_type(ctx, -3))
             goto error;
         }
     }
@@ -712,15 +728,13 @@ static duk_int_t do_setCookie(duk_context * ctx)
             domain = strdup(duk_safe_to_string(ctx, -2));
             if (domain == NULL)
             {
-                JSE_ERROR("strdup() failed: %s", strerror(errno));
-                (void) duk_error(ctx, DUK_ERR_ERROR, "Internal error!");
-
+                JSE_ERROR("strdup() failed: %s", strerror(errno))
                 goto error;
             }
         }
         else
         {
-            (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Invalid argument: domain (%d)", duk_get_type(ctx, -2));
+            JSE_ERROR("Invalid argument \"domain\" (%d)", duk_get_type(ctx, -2))
             goto error;
         }
     }
@@ -731,7 +745,7 @@ static duk_int_t do_setCookie(duk_context * ctx)
     }
     else
     {
-        (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Invalid argument: secure (%d)", duk_get_type(ctx, -1));
+        JSE_ERROR("Invalid argument \"secure\" (%d)", duk_get_type(ctx, -1))
         goto error;
     }
 
@@ -762,7 +776,7 @@ error:
         free(value);
     }
 
-    return -1;
+    return ret;
 }
 
 /**
@@ -776,9 +790,9 @@ error:
  * @param ctx the duktape context.
  * @return the number of values on the stack or -1 for an error.
  */
-static duk_int_t do_setHeader(duk_context * ctx)
+static duk_ret_t do_setHeader(duk_context * ctx)
 {
-    duk_int_t ret = -1;
+    duk_ret_t ret = DUK_RET_ERROR;
     char * name = NULL;
     char * value = NULL;
 
@@ -809,35 +823,35 @@ static duk_int_t do_setHeader(duk_context * ctx)
                         else
                         {
                             JSE_ERROR("strdup() failed: %s", strerror(errno));
-                            (void) duk_error(ctx, DUK_ERR_ERROR, "Internal error!");
                             free(name);
                         }
                     }
                     else
                     {
-                        (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, 
-                            "Invalid argument: value (%d)", duk_get_type(ctx, -1));
+                        JSE_ERROR("Invalid argument: value (%d)", duk_get_type(ctx, -1))
                         free(name);
+
+                        ret = DUK_RET_TYPE_ERROR;
                     }
                 }
             }
             else
             {
-                JSE_ERROR("Illegal header name: %s", name);
-                (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Illegal header name: %s", name);
-
+                JSE_ERROR("Illegal header name: \"%s\"", name);
                 free(name);
+
+                ret = DUK_RET_TYPE_ERROR;
             }
         }
         else
         {
             JSE_ERROR("strdup() failed: %s", strerror(errno));
-            (void) duk_error(ctx, DUK_ERR_ERROR, "Internal error!");
         }
     }
     else
     {
-       (void) duk_error(ctx, DUK_ERR_TYPE_ERROR, "Invalid argument: name (%d)", duk_get_type(ctx, -2));
+       JSE_ERROR("Invalid argument \"name\" (%d)", duk_get_type(ctx, -2))
+       ret = DUK_RET_TYPE_ERROR;
     }
 
     return ret;
@@ -1021,9 +1035,12 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             }
             else
             {
+                /* In case of an error, an error object is on the duktape stack */
                 return_error(jse_ctx, 500, "text/html", 
-                    "<html><head><title>Error 500: Internal server error</title></head><body>Error %d</body></html>",
-                    ret);
+                    "<html><head><title>Internal server error</title></head><body>%s</body></html>",
+                    duk_safe_to_string(jse_ctx->ctx, -1));
+
+                duk_pop(jse_ctx->ctx);
             }
         }
         /* An HTTP method was set but we failed to parse. */
@@ -1033,7 +1050,7 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             if (jse_ctx->req != NULL)
             {
                 return_error(jse_ctx, 403, "text/html", 
-                    "<html><head><title>Error 403: Method not supported</title></head><body>Method not supported</body></html>");
+                    "<html><head><title>Method not supported</title></head><body>Method not supported</body></html>");
             }
             else
             {

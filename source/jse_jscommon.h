@@ -16,7 +16,7 @@ extern "C" {
  * @param size the size of the context.
  * @return an error status or 0.
  */
-duk_int_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size);
+duk_ret_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size);
 
 /**
  * Binds a set of JavaScript extensions

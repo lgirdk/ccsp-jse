@@ -21,7 +21,7 @@
  */
 static duk_int_t run_buffer(duk_context *ctx, const char* buffer, size_t size, const char* filename)
 {
-    duk_int_t ret = DUK_RET_ERROR;
+    duk_int_t ret = DUK_EXEC_ERROR;
 
     JSE_ASSERT(buffer != NULL)
     JSE_ASSERT(size != 0)
@@ -38,22 +38,27 @@ static duk_int_t run_buffer(duk_context *ctx, const char* buffer, size_t size, c
 
     if (ret != 0)
     {
-        JSE_ERROR("Compile failed: %s", duk_safe_to_string(ctx, -1));
+        JSE_ERROR("Compile failed!");
     }
     else
     {
         ret = duk_pcall(ctx, 0);
         if (ret != DUK_EXEC_SUCCESS)
         {
-            JSE_ERROR("Execution failed: %s", duk_safe_to_string(ctx, -1));
+            JSE_ERROR("Execution failed!");
         }
         else
         {
+            /* duk_safe_to_string() coerces the value on the stack in to a string
+               leaving it on the stack (as well as returning the value) */
             JSE_DEBUG("Results: %s", duk_safe_to_string(ctx, -1));
+
+            /* pop the coerced string from the stack */
+            duk_pop(ctx);
         }
     } 
 
-    duk_pop(ctx);
+    /* In case of error, an Error() object is left on the stack */
     return ret;
 }
 
@@ -67,7 +72,7 @@ static duk_int_t run_buffer(duk_context *ctx, const char* buffer, size_t size, c
  */
 duk_int_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size)
 {
-    duk_int_t ret = DUK_RET_ERROR;
+    duk_int_t ret = DUK_EXEC_ERROR;
 
     if (jse_ctx != NULL && buffer != NULL && size != 0)
     {
@@ -89,19 +94,20 @@ duk_int_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size
  * @param size the size of the context.
  * @return an error status or 0.
  */
-static duk_int_t do_include(duk_context *ctx)
+static duk_ret_t do_include(duk_context *ctx)
 {
+    duk_ret_t ret = DUK_RET_ERROR;
     const char * filename = NULL;
     char * buffer = NULL;
     size_t size = 0;
-    duk_int_t ret = DUK_RET_ERROR;
 
     JSE_ASSERT(ctx != NULL)
 
     filename = duk_safe_to_string(ctx, -1);
     if (filename == NULL)
     {
-        ret = duk_error(ctx, DUK_ERR_TYPE_ERROR, "Filename is null");
+        JSE_ERROR("Filename is null")
+        ret = DUK_RET_TYPE_ERROR;
     }
     else
     {
@@ -109,26 +115,30 @@ static duk_int_t do_include(duk_context *ctx)
 
         if (stat(filename, &s) != 0)
         {
-            ret = duk_type_error(ctx, "Filename: %s", strerror(errno));
+            JSE_ERROR("%s: %s", filename, strerror(errno))
         }
         else
         if (!S_ISREG(s.st_mode))
         {
-            ret = duk_type_error(ctx, "Filename is not a regular file");
+            JSE_ERROR("%s: not a regular file", filename)
+            ret = DUK_RET_TYPE_ERROR;
         }
         else
         {
             size = jse_read_file(filename, &buffer, &size);
             if (size == 0)
             {
-                ret = duk_generic_error(ctx, "Including %s failed", filename);
+                JSE_ERROR("Including %s failed", filename)
             }
             else
             {
                 JSE_ASSERT(buffer != NULL)
                 JSE_ASSERT(size != 0)
 
-                ret = run_buffer(ctx, buffer, size, filename);
+                if (run_buffer(ctx, buffer, size, filename) == DUK_EXEC_SUCCESS)
+                {
+                    ret = 0;
+                }
 
                 free(buffer);
             }
@@ -146,7 +156,7 @@ static duk_int_t do_include(duk_context *ctx)
  */
 duk_int_t jse_bind_jscommon(jse_context_t* jse_ctx)
 {
-    duk_int_t ret = DUK_RET_ERROR;
+    duk_int_t ret = DUK_ERR_ERROR;
 
     JSE_VERBOSE("Binding JS common!")
 
