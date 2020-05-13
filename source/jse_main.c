@@ -1099,6 +1099,9 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
     if (ret == 0)
     {
         /* Parse the request */
+#ifdef ENABLE_FASTCGI
+        jse_ctx->req = qcgireq_parse(jse_ctx->req, 0);
+#else
         if (process_post)
         {
             jse_ctx->req = qcgireq_parse(jse_ctx->req, Q_CGI_POST);
@@ -1113,6 +1116,7 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
         {
             jse_ctx->req = qcgireq_parse(jse_ctx->req, Q_CGI_COOKIE);
         }
+#endif
 
         JSE_VERBOSE("jse_ctx->req=%p", jse_ctx->req)
 
@@ -1341,25 +1345,42 @@ int main(int argc, char **argv)
     }
 
     JSE_VERBOSE("main loop...")
-    jse_context_t *jse_ctx = jse_context_create(filename);
-    if (jse_ctx != NULL)
+
+#ifdef ENABLE_FASTCGI
+    while (FCGI_Accept() >= 0)
     {
-        init_duktape(jse_ctx);
+        /* For Fast CGI get the script file name from the environment */
+        char *fname = getenv("SCRIPT_FILENAME");
+        if (!fname)
+        {
+            JSE_ERROR("Unable to get SCRIPT_FILENAME");
+            continue;
+        }
 
-#ifdef ENABLE_FASTCGI
-        while(FCGI_Accept() >= 0) {
-#endif
-
-        ret = handle_request(jse_ctx);
-
-#ifdef ENABLE_FASTCGI
+        /* Need a copy of the string - will be freed by jse_context_destroy */
+        filename = strdup( fname );
+        if (filename == NULL)
+        {
+            JSE_ERROR("strdup() failed: %s", strerror(errno));
+            continue;
         }
 #endif
 
-        cleanup_duktape(jse_ctx);
-    }
+        /* Get the script and process it */
+        jse_context_t *jse_ctx = jse_context_create(filename);
+        if (jse_ctx != NULL)
+        {
+            init_duktape(jse_ctx);
 
-    jse_context_destroy(jse_ctx);
+            handle_request(jse_ctx);
+
+            cleanup_duktape(jse_ctx);
+
+            jse_context_destroy(jse_ctx);
+        }
+#ifdef ENABLE_FASTCGI
+    }
+#endif
 
     if (ret != 0)
     {

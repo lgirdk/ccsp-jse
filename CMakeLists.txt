@@ -26,6 +26,7 @@ enable_testing()
 
 option(BUILD_RDK "BUILD_RDK" OFF)
 option(ENABLE_LIBXML2 "ENABLE_LIBXML2" OFF)
+option(FAST_CGI "FAST_CGI" OFF)
 
 # default to Release build
 if(NOT CMAKE_BUILD_TYPE)
@@ -36,6 +37,10 @@ endif()
 set (CMAKE_C_FLAGS
   "${CMAKE_C_FLAGS} \
   -Wall -Wextra -fstrict-aliasing -fomit-frame-pointer -std=gnu99")
+
+if(FAST_CGI)
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DENABLE_FASTCGI")
+endif(FAST_CGI)
 
 if(BUILD_RDK)
   message(STATUS, "rdk build")
@@ -69,6 +74,10 @@ set(JSE_SOURCES
   source/jse_main.c)
 
 set(JSE_LIBS "-lqdecoder -lduktape -lm")
+
+if(FAST_CGI)
+  set(JSE_LIBS "${JSE_LIBS} -lfcgi")
+endif(FAST_CGI)
 
 if(BUILD_RDK)
   set(JSE_SOURCES
