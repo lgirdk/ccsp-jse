@@ -2,7 +2,7 @@
 #ifndef JSE_JSCOMMON_H
 #define JSE_JSCOMMON_H
 
-#include <duktape.h>
+#include "jse_common.h"
 
 #if defined(__cplusplus)
 extern "C" {

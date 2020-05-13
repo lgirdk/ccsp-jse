@@ -463,11 +463,11 @@ static void cleanup_duktape(jse_context_t *jse_ctx)
  */
 static duk_int_t run_stdin(jse_context_t *jse_ctx)
 {
+    duk_int_t ret = DUK_ERR_ERROR;
     char *buffer = NULL;
     size_t buffer_size = 0;
     size_t size = 0;
     ssize_t bytes = 0;
-    duk_int_t ret = 0;
 
     buffer_size = 4096;
     buffer = (char*)malloc(buffer_size);
@@ -531,6 +531,7 @@ static duk_int_t run_stdin(jse_context_t *jse_ctx)
 
     free(buffer);
 
+    JSE_VERBOSE("ret=%d")
     return ret;
         
 error:
@@ -542,6 +543,7 @@ error:
         free(buffer);
     }
 
+    JSE_VERBOSE("ret=DUK_RET_ERROR")
     return DUK_RET_ERROR;
 }
 
@@ -576,6 +578,7 @@ static duk_int_t run_file(jse_context_t *jse_ctx)
             "%s: %s", jse_ctx->filename, strerror(errno));
     }
 
+    JSE_VERBOSE("ret=%d")
     return ret;
 }
 
@@ -640,6 +643,7 @@ static duk_ret_t do_print(duk_context *ctx)
         ret = 0;
     }
 
+    JSE_VERBOSE("ret=%d")
     return ret;
 }
 
@@ -671,6 +675,7 @@ static duk_ret_t do_setHTTPStatus(duk_context * ctx)
         ret = DUK_RET_TYPE_ERROR;
     }
 
+    JSE_VERBOSE("ret=%d")
     return ret;
 }
 
@@ -715,6 +720,7 @@ static duk_ret_t do_setContentType(duk_context * ctx)
         ret = DUK_RET_TYPE_ERROR;
     }
 
+    JSE_VERBOSE("ret=%d")
     return ret;
 }
 
@@ -837,6 +843,7 @@ static duk_ret_t do_setCookie(duk_context * ctx)
         http_cookie.domain !=NULL ? http_cookie.domain : "(null)",
         http_cookie.secure ? "true" : "false")
 
+    JSE_VERBOSE("ret=0")
     return 0;
 
 error:
@@ -855,6 +862,7 @@ error:
         free(value);
     }
 
+    JSE_VERBOSE("ret=%d")
     return ret;
 }
 
@@ -933,6 +941,7 @@ static duk_ret_t do_setHeader(duk_context * ctx)
        ret = DUK_RET_TYPE_ERROR;
     }
 
+    JSE_VERBOSE("ret=%d")
     return ret;
 }
 
@@ -1104,6 +1113,8 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
                 {
                     ret = run_stdin(jse_ctx);
                 }
+
+                JSE_VERBOSE("ret=%d")
             }
 
             if (ret == 0)

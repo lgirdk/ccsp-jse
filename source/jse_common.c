@@ -134,7 +134,7 @@ size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize)
     return size;
 
 error:
-    JSE_ERROR("Error: \"%s\" Filename: \"%s\"", strerror(errno), filename)
+    JSE_ERROR("%s: %s", filename, strerror(errno))
 
     if (buffer != NULL)
     {
