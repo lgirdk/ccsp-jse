@@ -25,6 +25,7 @@ project(jse
 enable_testing()
 
 option(BUILD_RDK "BUILD_RDK" OFF)
+option(ENABLE_LIBXML2 "ENABLE_LIBXML2" ON)
 
 # default to Release build
 if(NOT CMAKE_BUILD_TYPE)
@@ -38,10 +39,20 @@ set (CMAKE_C_FLAGS
 
 if(BUILD_RDK)
   message(STATUS, "rdk build")
-  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_ANSC_LINUX -D_ANSC_USER -D_ANSC_LITTLE_ENDIAN_ -DBUILD_RDK")
+  set (CMAKE_C_FLAGS 
+     "${CMAKE_C_FLAGS} \
+     -D_ANSC_LINUX \
+     -D_ANSC_USER -D_ANSC_LITTLE_ENDIAN_ -DBUILD_RDK")
 else(BUILD_RDK)
   message(STATUS, "generic build")
 endif(BUILD_RDK)
+
+if(ENABLE_LIBXML2)
+  set (CMAKE_C_FLAGS 
+    "${CMAKE_C_FLAGS} \
+    -DENABLE_LIBXML2 \
+    -I/usr/include/libxml2")
+endif(ENABLE_LIBXML2)
 
 # in keeping with the small footprint goal, optimize for size (-Os)
 set(CMAKE_C_FLAGS_RELEASE "-Os")
@@ -67,6 +78,13 @@ if(BUILD_RDK)
   set(JSE_LIBS "${JSE_LIBS} -lccsp_common -ldbus-1")
 endif(BUILD_RDK)
 
+if(ENABLE_LIBXML2)
+  set(JSE_SOURCES
+    ${JSE_SOURCES}
+    source/jse_xml.c)
+  set(JSE_LIBS "${JSE_LIBS} -lxml2")
+endif(ENABLE_LIBXML2)
+
 add_executable(jse ${JSE_SOURCES})
 target_link_libraries(jse ${JSE_LIBS})
 
@@ -75,7 +93,7 @@ if(BUILD_RDK)
 	  RUNTIME DESTINATION sbin)
 endif(BUILD_RDK)
 
-if (BUILD_TESTING)
+if(BUILD_TESTING)
   add_subdirectory(tests)
-endif ()
+endif(BUILD_TESTING)
 

@@ -89,11 +89,9 @@ duk_int_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size
 }
 
 /**
- * Runs JavaScript code stored in a buffer.
+ * Runs JavaScript code stored in a file, the name of which is on the stack.
  *
- * @param jse_ctx the jse context.
- * @param buffer the buffer.
- * @param size the size of the context.
+ * @param ctx the duktape context.
  * @return an error status or 0.
  */
 static duk_ret_t do_include(duk_context *ctx)

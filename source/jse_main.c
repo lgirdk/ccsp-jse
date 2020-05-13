@@ -20,6 +20,8 @@
 #include "jse_common.h"
 #include "jse_jscommon.h"
 
+#include "jse_xml.h"
+
 #ifdef BUILD_RDK
 extern duk_int_t ccsp_cosa_module_open(duk_context *ctx);
 #endif
@@ -973,16 +975,20 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
     duk_push_c_function(jse_ctx->ctx, do_setHeader, 2);
     duk_put_global_string(jse_ctx->ctx, "setHeader");
 
-    ret = jse_bind_jscommon(jse_ctx);
-    if (ret != 0)
+    if ((ret = jse_bind_jscommon(jse_ctx)) != 0)
     {
         JSE_ERROR("Failed to bind jscommon functions!");
     }
+#ifdef ENABLE_LIBXML2
+    else if ((ret = jse_bind_xml(jse_ctx)) != 0)
+    {
+        JSE_ERROR("Failed to bind xml functions!");
+    }
+#endif
 #ifdef BUILD_RDK
     else
     {
-        ret = ccsp_cosa_module_open(jse_ctx->ctx);
-        if (ret != 0)
+        if ((ret = ccsp_cosa_module_open(jse_ctx->ctx)) != 0)
         {
             JSE_ERROR("Failed to bind cosa functions!");
         }
@@ -1076,7 +1082,7 @@ static duk_int_t create_request_object(jse_context_t *jse_ctx)
  */
 static duk_int_t handle_request(jse_context_t *jse_ctx)
 {
-    duk_int_t ret = 0;
+    duk_int_t ret = DUK_ERR_ERROR;
 
     ret = bind_functions(jse_ctx); 
     if (ret == 0)
@@ -1113,10 +1119,9 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
                 {
                     ret = run_stdin(jse_ctx);
                 }
-
-                JSE_VERBOSE("ret=%d")
             }
 
+            JSE_VERBOSE("ret=%d")
             if (ret == 0)
             {
                 return_response(jse_ctx, 
@@ -1159,6 +1164,12 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             else
             {
                 ret = run_stdin(jse_ctx);
+            }
+
+            JSE_VERBOSE("ret=%d")
+            if (ret != 0)
+            {
+                fprintf(stderr, "Script error: %s\n", duk_safe_to_string(jse_ctx->ctx, -1));
             }
         }
 
@@ -1203,6 +1214,7 @@ int main(int argc, char **argv)
     char * jseargs = NULL;
     char * filename = NULL;
     char * arg = NULL;
+    duk_int_t ret = DUK_ERR_ERROR;
 
     JSE_DEBUG_INIT()
 
@@ -1323,7 +1335,7 @@ int main(int argc, char **argv)
         while(FCGI_Accept() >= 0) {
 #endif
 
-        handle_request(jse_ctx);
+        ret = handle_request(jse_ctx);
 
 #ifdef ENABLE_FASTCGI
         }
@@ -1333,6 +1345,11 @@ int main(int argc, char **argv)
     }
 
     jse_context_destroy(jse_ctx);
+
+    if (ret != 0)
+    {
+        return EXIT_FATAL;
+    }
 
     return EXIT_SUCCESS;
 }
