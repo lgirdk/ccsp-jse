@@ -25,7 +25,7 @@ project(jse
 enable_testing()
 
 option(BUILD_RDK "BUILD_RDK" OFF)
-option(ENABLE_LIBXML2 "ENABLE_LIBXML2" ON)
+option(ENABLE_LIBXML2 "ENABLE_LIBXML2" OFF)
 
 # default to Release build
 if(NOT CMAKE_BUILD_TYPE)
