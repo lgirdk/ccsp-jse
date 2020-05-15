@@ -59,7 +59,7 @@ static duk_int_t run_buffer(duk_context *ctx, const char* buffer, size_t size, c
     } 
 
     /* In case of error, an Error() object is left on the stack */
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 
@@ -84,7 +84,7 @@ duk_int_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size
         JSE_ERROR("Invalid arguments!")
     }
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 
@@ -145,7 +145,7 @@ static duk_ret_t do_include(duk_context *ctx)
         }
     }
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 
@@ -169,7 +169,7 @@ duk_int_t jse_bind_jscommon(jse_context_t* jse_ctx)
         ret = 0;
     }
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 

@@ -533,7 +533,7 @@ static duk_int_t run_stdin(jse_context_t *jse_ctx)
 
     free(buffer);
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
         
 error:
@@ -580,7 +580,7 @@ static duk_int_t run_file(jse_context_t *jse_ctx)
             "%s: %s", jse_ctx->filename, strerror(errno));
     }
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 
@@ -645,7 +645,7 @@ static duk_ret_t do_print(duk_context *ctx)
         ret = 0;
     }
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 
@@ -677,7 +677,7 @@ static duk_ret_t do_setHTTPStatus(duk_context * ctx)
         ret = DUK_RET_TYPE_ERROR;
     }
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 
@@ -722,7 +722,7 @@ static duk_ret_t do_setContentType(duk_context * ctx)
         ret = DUK_RET_TYPE_ERROR;
     }
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 
@@ -864,7 +864,7 @@ error:
         free(value);
     }
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 
@@ -943,7 +943,7 @@ static duk_ret_t do_setHeader(duk_context * ctx)
        ret = DUK_RET_TYPE_ERROR;
     }
 
-    JSE_VERBOSE("ret=%d")
+    JSE_VERBOSE("ret=%d", ret)
     return ret;
 }
 
@@ -1121,7 +1121,7 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
                 }
             }
 
-            JSE_VERBOSE("ret=%d")
+            JSE_VERBOSE("ret=%d", ret)
             if (ret == 0)
             {
                 return_response(jse_ctx, 
@@ -1166,7 +1166,7 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
                 ret = run_stdin(jse_ctx);
             }
 
-            JSE_VERBOSE("ret=%d")
+            JSE_VERBOSE("ret=%d", ret)
             if (ret != 0)
             {
                 fprintf(stderr, "Script error: %s\n", duk_safe_to_string(jse_ctx->ctx, -1));
