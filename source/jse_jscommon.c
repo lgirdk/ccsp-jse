@@ -150,6 +150,94 @@ static duk_ret_t do_include(duk_context *ctx)
 }
 
 /**
+ * A JavaScript debug print binding.
+ *
+ * This binds a JavaScript function that uses the JSE debug_print() method
+ * to print to the debug log. It takes the following arguments:
+ *  - debug message
+ *  - debug level (optional)
+ *  - file name (optional)
+ *  - line number (optional)
+ *
+ * @param ctx the duktape context.
+ * @return an error status or 0.
+ */
+static duk_ret_t do_debugPrint(duk_context * ctx)
+{
+#ifdef JSE_DEBUG_ENABLED
+    duk_ret_t ret = DUK_RET_ERROR;
+    duk_int_t count = duk_get_top(ctx);
+    char * filename = "SCRIPT";
+    char * msg = NULL;
+    int level = JSE_DEBUG_LEVEL_DEBUG;
+    int line = 0;
+
+    /* Must have at least one argument */
+    if (count == 0)
+    {
+        ret = DUK_RET_TYPE_ERROR;
+        goto error;
+    }
+
+    /* debug level */
+    if (count > 1)
+    {
+        /* duktape indices are either 0, 1, 2, 3 from the top or
+           -1, -2, -3 from the bottom */
+        if (!duk_is_number(ctx, 1))
+        {
+            JSE_ERROR("level is not a number!");
+            ret = DUK_RET_TYPE_ERROR;
+            goto error;
+        }
+        else
+        {
+            level = (int)duk_get_int_default(ctx, 1, JSE_DEBUG_LEVEL_DEBUG);
+        }
+    }
+
+    /* filename */
+    if (count > 2)
+    {
+        if (!duk_is_string(ctx, 2))
+        {
+            JSE_ERROR("filename is not a string!");
+            ret = DUK_RET_TYPE_ERROR;
+            goto error;
+        }
+        else
+        {
+            filename = (char*)duk_safe_to_string(ctx, 2);
+        }
+    }
+
+    /* line number */
+    if (count > 3)
+    {
+        if (!duk_is_number(ctx, 3))
+        {
+            JSE_ERROR("line is not a number!");
+            ret = DUK_RET_TYPE_ERROR;
+            goto error;
+        }
+        else
+        {
+            line = (int)duk_get_int_default(ctx, 3, 0);
+        }
+    }
+
+    msg = (char*)duk_safe_to_string(ctx, 0);
+    jse_debug(filename, line, level, "%s", msg);
+    return 0;
+
+error:
+    return ret;
+#else
+    return 0;
+#endif
+}
+
+/**
  * Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
@@ -165,6 +253,9 @@ duk_int_t jse_bind_jscommon(jse_context_t* jse_ctx)
     {
         duk_push_c_function(jse_ctx->ctx, do_include, 1);
         duk_put_global_string(jse_ctx->ctx, "include");
+
+        duk_push_c_function(jse_ctx->ctx, do_debugPrint, DUK_VARARGS);
+        duk_put_global_string(jse_ctx->ctx, "debugPrint");
 
         ret = 0;
     }
