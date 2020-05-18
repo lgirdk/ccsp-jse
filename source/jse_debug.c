@@ -1,4 +1,5 @@
 
+#include <sys/time.h>
 #ifdef ENABLE_FASTCGI
 #include "fcgi_stdio.h"
 #else
@@ -13,9 +14,14 @@ int jse_verbosity = 0;
 
 void jse_debug(char *file, int line, int level, const char *format, ...)
 {
+    struct timeval tv;
+    long int ms;
     char buffer[1024];
     va_list ap;
     int len;
+
+    (void) gettimeofday(&tv, NULL);
+    ms = (long int)tv.tv_usec / 1000;
 
     va_start(ap, format);
     len = vsnprintf(buffer, sizeof(buffer), format, ap);
@@ -26,19 +32,19 @@ void jse_debug(char *file, int line, int level, const char *format, ...)
         switch (level)
         {
             case JSE_DEBUG_LEVEL_ERROR:
-                fprintf(stderr, "%s:%d:ERROR:%s\n", file, line, buffer);
+                fprintf(stderr, "%08ld.%03ld:%s:%d:ERROR:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
                 break;
             case JSE_DEBUG_LEVEL_WARNING:
-                fprintf(stderr, "%s:%d:WARNING:%s\n", file, line, buffer);
+                fprintf(stderr, "%08ld.%03ld:%s:%d:WARNING:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
                 break;
             case JSE_DEBUG_LEVEL_INFO:
-                fprintf(stderr, "%s:%d:INFO:%s\n", file, line, buffer);
+                fprintf(stderr, "%08ld.%03ld:%s:%d:INFO:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
                 break;
             case JSE_DEBUG_LEVEL_DEBUG:
-                fprintf(stderr, "%s:%d:DEBUG:%s\n", file, line, buffer);
+                fprintf(stderr, "%08ld.%03ld:%s:%d:DEBUG:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
                 break;
             case JSE_DEBUG_LEVEL_VERBOSE:
-                fprintf(stderr, "%s:%d:VERBOSE:%s\n", file, line, buffer);
+                fprintf(stderr, "%08ld.%03ld:%s:%d:VERBOSE:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
                 break;
             default:
                 break;

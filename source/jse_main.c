@@ -438,6 +438,8 @@ static void handle_fatal_error(void* userdata, const char *msg)
  */
 static duk_context *init_duktape(jse_context_t *jse_ctx)
 {
+    JSE_VERBOSE("init_duktape()")
+
     /* TODO: low mem allocators */
     jse_ctx->ctx = duk_create_heap(NULL, NULL, NULL, jse_ctx, handle_fatal_error);
 
@@ -451,6 +453,8 @@ static duk_context *init_duktape(jse_context_t *jse_ctx)
  */
 static void cleanup_duktape(jse_context_t *jse_ctx)
 {
+    JSE_VERBOSE("cleanup_duktape()")
+
     duk_destroy_heap(jse_ctx->ctx);
 }
 
@@ -470,6 +474,8 @@ static duk_int_t run_stdin(jse_context_t *jse_ctx)
     size_t buffer_size = 0;
     size_t size = 0;
     ssize_t bytes = 0;
+
+    JSE_VERBOSE("run_stdin()")
 
     buffer_size = 4096;
     buffer = (char*)malloc(buffer_size);
@@ -563,6 +569,8 @@ static duk_int_t run_file(jse_context_t *jse_ctx)
     duk_int_t ret = DUK_ERR_ERROR;
     char *buffer = NULL;
     size_t size = 0;
+
+    JSE_VERBOSE("run_file()")
 
     if (jse_read_file(jse_ctx->filename, &buffer, &size) > 0)
     {
@@ -957,6 +965,7 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
 {
     duk_int_t ret = 0;
 
+    JSE_VERBOSE("bind_functions()")
     JSE_ASSERT(jse_ctx != NULL);
 
     /* Bind built ins */
@@ -1084,6 +1093,8 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
 {
     duk_int_t ret = DUK_ERR_ERROR;
 
+    JSE_VERBOSE("handle_request()")
+
     ret = bind_functions(jse_ctx); 
     if (ret == 0)
     {
@@ -1102,6 +1113,8 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
         {
             jse_ctx->req = qcgireq_parse(jse_ctx->req, Q_CGI_COOKIE);
         }
+
+        JSE_VERBOSE("jse_ctx->req=%p", jse_ctx->req)
 
         /* An HTTP method was set, we should parse as HTTP */
         if (jse_ctx->req != NULL)
@@ -1217,6 +1230,7 @@ int main(int argc, char **argv)
     duk_int_t ret = DUK_ERR_ERROR;
 
     JSE_DEBUG_INIT()
+    JSE_VERBOSE("main()")
 
     while (1)
     {
@@ -1326,6 +1340,7 @@ int main(int argc, char **argv)
         }
     }
 
+    JSE_VERBOSE("main loop...")
     jse_context_t *jse_ctx = jse_context_create(filename);
     if (jse_ctx != NULL)
     {
