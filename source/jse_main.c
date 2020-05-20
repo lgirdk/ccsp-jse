@@ -1351,7 +1351,7 @@ int main(int argc, char **argv)
     {
         /* For Fast CGI get the script file name from the environment */
         char *fname = getenv("SCRIPT_FILENAME");
-        if (!fname)
+        if (fname == NULL)
         {
             JSE_ERROR("Unable to get SCRIPT_FILENAME");
             continue;
