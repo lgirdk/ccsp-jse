@@ -48,6 +48,102 @@ void jse_context_destroy(jse_context_t *jse_ctx)
 }
 
 /**
+ * Read from a file descriptor.
+ *
+ * This function reads an unknown number of bytes from a file descriptor.
+ * It does this by creating a buffer and resizing it as necessary so can
+ * be used when seeking will not work.
+ *
+ * @param fd the file descriptor.
+ * @param pbuffer a pointer to return the buffer.
+ * @param psize a pointer to return the size.
+ *
+ * @return the file size or 0 on error.
+ */
+size_t jse_read_fd(int fd, char **pbuffer, size_t *psize)
+{
+    size_t buffer_size = 4096;
+    char * buffer = (char*)malloc(buffer_size);
+    size_t size = 0;
+    ssize_t bytes = 0;
+
+    if (buffer == NULL)
+    {
+        goto error;
+    }
+
+    do
+    {
+        /* Size is size of contents */
+        TEMP_FAILURE_RETRY(bytes = read(fd, buffer + size, buffer_size - size));
+        if (bytes == -1)
+        {
+            JSE_ERROR("read() failed: %s", strerror(errno))
+            goto error;
+        }
+
+        if (bytes > 0)
+        {
+            size += bytes;
+
+            /* Do we need to resize the buffer */
+            if (size + bytes == buffer_size)
+            {
+                /* Can't expand it any more. */
+                if (buffer_size == JSE_MAX_FILE_SIZE)
+                {
+                    JSE_ERROR("File too large!");
+                    goto error;
+                }
+
+                buffer_size *= 2;
+
+                if (buffer_size > JSE_MAX_FILE_SIZE)
+                {
+                    buffer_size = JSE_MAX_FILE_SIZE;
+                }
+
+                buffer = realloc(buffer, buffer_size);
+                if (buffer == NULL)
+                {
+                    JSE_ERROR("realloc() failed: %s", strerror(errno))
+                    goto error;
+                }
+            }
+        }
+    }
+    while (bytes > 0);
+
+    /* trim off excess memory. */
+    buffer = realloc(buffer, size + sizeof('\0'));
+    if (buffer == NULL)
+    {
+        JSE_ERROR("realloc() failed: %s", strerror(errno))
+        goto error;
+    }
+
+    *(buffer + size) = '\0';
+
+    *pbuffer = buffer;
+    *psize = size;
+
+    return size;
+
+error:
+    if (fd != -1)
+    {
+        close(fd);
+    }
+
+    if (buffer != NULL)
+    {
+        free(buffer);
+    }
+
+    return 0;
+}
+
+/**
  * Reads a file in to a buffer.
  *
  * Reads a file in to a buffer allocating the storage from the heap. The
@@ -79,15 +175,27 @@ size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize)
     fd = open(filename, O_RDONLY);
     if (fd == -1)
     {
+        JSE_ERROR("%s: %s", filename, strerror(errno))
         goto error;
     }
 
     /* Finding size and a single malloc is more efficient all round! */
-
     offset = lseek(fd, 0, SEEK_END);
     if (offset == -1)
     {
-        goto error;
+        JSE_WARNING("%s: %s", filename, strerror(errno))
+
+        /* Lets try falling back to the iterative method. */
+        if (jse_read_fd(fd, &buffer, &size) == 0)
+        {
+            /* That didn't work either */
+            goto error;
+        }
+        else
+        {
+            close(fd);
+            goto done;
+        }
     }
 
     size = (size_t)offset;
@@ -95,18 +203,21 @@ size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize)
 
     if (size > JSE_MAX_FILE_SIZE)
     {
+        JSE_ERROR("File too large!");
         goto error;
     }
 
     offset = lseek(fd, 0, SEEK_SET);
     if (offset == -1)
     {
+        JSE_ERROR("%s: %s", filename, strerror(errno))
         goto error;
     }
 
     buffer = malloc(size + 1);
     if (buffer == NULL)
     {
+        JSE_ERROR("%s: %s", filename, strerror(errno))
         goto error;
     }
 
@@ -115,6 +226,7 @@ size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize)
         TEMP_FAILURE_RETRY(bytes = read(fd, buffer + offset, size - offset));
         if (bytes == -1)
         {
+            JSE_ERROR("%s: %s", filename, strerror(errno))
             goto error;
         }
 
@@ -126,6 +238,8 @@ size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize)
     while (bytes > 0 && size - offset > 0);
 
     *(buffer + size) = '\0';
+
+done:
     close(fd);
 
     *pbuffer = buffer;
@@ -134,8 +248,6 @@ size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize)
     return size;
 
 error:
-    JSE_ERROR("%s: %s", filename, strerror(errno))
-
     if (buffer != NULL)
     {
         free(buffer);

@@ -42,6 +42,21 @@ jse_context_t *jse_context_create(char *filename);
 void jse_context_destroy(jse_context_t *jse_ctx);
 
 /**
+ * Read from a file descriptor.
+ *
+ * This function reads an unknown number of bytes from a file descriptor.
+ * It does this by creating a buffer and resizing it as necessary so can
+ * be used when seeking will not work.
+ * 
+ * @param fd the file descriptor.
+ * @param pbuffer a pointer to return the buffer.
+ * @param psize a pointer to return the size.
+ *
+ * @return the file size or 0 on error.
+ */
+size_t jse_read_fd(int fd, char **pbuffer, size_t *psize);
+
+/**
  * Reads a file in to a buffer.
  *
  * Reads a file in to a buffer allocating the storage from the heap. The

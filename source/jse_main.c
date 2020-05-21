@@ -471,88 +471,25 @@ static duk_int_t run_stdin(jse_context_t *jse_ctx)
 {
     duk_int_t ret = DUK_ERR_ERROR;
     char *buffer = NULL;
-    size_t buffer_size = 0;
     size_t size = 0;
-    ssize_t bytes = 0;
-
-    JSE_VERBOSE("run_stdin()")
-
-    buffer_size = 4096;
-    buffer = (char*)malloc(buffer_size);
-    if (buffer == NULL)
+ 
+    if (jse_read_fd(STDIN_FILENO, &buffer, &size) > 0)
     {
-        goto error;
-    }
-
-    do
-    {
-        /* Size is size of contents */
-        TEMP_FAILURE_RETRY(bytes = read(STDIN_FILENO, buffer + size, buffer_size - size));
-        if (bytes == -1)
+        if (jse_run_buffer(jse_ctx, buffer, size) == DUK_EXEC_SUCCESS)
         {
-            goto error;
+            ret = 0;
         }
 
-        if (bytes > 0)
-        {
-            size += bytes;
-
-            /* Do we need to resize the buffer */
-            if (size + bytes == buffer_size)
-            {
-                /* Can't expand it any more. */
-                if (buffer_size == MAX_SCRIPT_SIZE)
-                {
-                    goto error;
-                }
-
-                buffer_size *= 2;
-
-                if (buffer_size > MAX_SCRIPT_SIZE)
-                {
-                    buffer_size = MAX_SCRIPT_SIZE;
-                }
-
-                buffer = realloc(buffer, buffer_size);
-                if (buffer == NULL)
-                {
-                    goto error;
-                }
-            }
-        }
+        free(buffer);
     }
-    while (bytes > 0);
-
-    /* trim off excess memory. */
-    buffer = realloc(buffer, size + 1);
-    if (buffer == NULL)
+    else
     {
-        goto error;
+        JSE_ERROR("Error: %s", strerror(errno))
+        duk_push_error_object(jse_ctx->ctx, DUK_ERR_ERROR,  "%s", strerror(errno));
     }
-
-    *(buffer + size) = '\0';
-
-    if (jse_run_buffer(jse_ctx, buffer, size) == DUK_EXEC_SUCCESS)
-    {
-        ret = 0;
-    }
-
-    free(buffer);
 
     JSE_VERBOSE("ret=%d", ret)
     return ret;
-        
-error:
-    JSE_ERROR("Error: %s", strerror(errno))
-    duk_push_error_object(jse_ctx->ctx, DUK_ERR_ERROR, "%s", strerror(errno));
-
-    if (buffer != NULL)
-    {
-        free(buffer);
-    }
-
-    JSE_VERBOSE("ret=DUK_RET_ERROR")
-    return DUK_RET_ERROR;
 }
 
 /**
