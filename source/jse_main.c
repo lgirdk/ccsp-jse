@@ -1083,8 +1083,32 @@ static duk_int_t create_request_object(jse_context_t *jse_ctx)
     return 0;
 }
 
+ /**
+ * Returns a simple HTTP server error response.
+ *
+ * @param status the HTTP status.
+ * @param msg the message.
+ */
+static void basic_return_error(int status)
+{
+    const char * msg = msg_for_http_status(status);
+
+    printf("Status: %d %s\r\nContent-Type: text/plain\r\n\r\n%s\r\n", status, msg, msg);
+}
+
 /**
  * Handle an HTTP request
+ *
+ * A note on error return codes.
+ *
+ * Returning an error from this function means the an error occurred and it
+ * was not reported to the caller. This means that if in CGI mode and
+ * qdecoder was initialised correctly an error will be reported as an HTTP
+ * error status and the function will return success. Similarly if in
+ * command line mode and the error is a script error and reported on stderr,
+ * the function will return success.
+ *
+ * So if this function returns an error status it should be handled.
  *
  * @param jse_ctx the jse context.
  * @return an error code or 0.
@@ -1154,6 +1178,8 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
 
                 duk_pop(jse_ctx->ctx);
             }
+
+            ret = 0;
         }
         /* An HTTP method was set but we failed to parse. */
         else if (process_post != 0 || process_get != 0 || process_cookie != 0)
@@ -1166,10 +1192,11 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             }
             else
             {
-                JSE_ERROR("Method not allowed!");
+                JSE_ERROR("qcgireq_parse() failed!")
+                basic_return_error(HTTP_STATUS_METHOD_NOT_ALLOWED);
             }
 
-            ret = DUK_RET_ERROR;
+            ret = 0;
         }
         /* Treat as regular output */
         else
@@ -1187,6 +1214,9 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             if (ret != 0)
             {
                 fprintf(stderr, "Script error: %s\n", duk_safe_to_string(jse_ctx->ctx, -1));
+
+                /* Exit the process */
+                exit(EXIT_FATAL);
             }
         }
 
@@ -1196,6 +1226,10 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             jse_ctx->req->free(jse_ctx->req);
             jse_ctx->req = NULL;
         }
+    }
+    else
+    {
+        JSE_ERROR("bind_functions() failed!")
     }
 
     return ret;
@@ -1350,18 +1384,22 @@ int main(int argc, char **argv)
     while (FCGI_Accept() >= 0)
     {
         /* For Fast CGI get the script file name from the environment */
-        char *fname = getenv("SCRIPT_FILENAME");
-        if (fname == NULL)
+        char *filenameenv = getenv("SCRIPT_FILENAME");
+        if (filenameenv == NULL)
         {
-            JSE_ERROR("Unable to get SCRIPT_FILENAME");
+            JSE_ERROR("SCRIPT_FILENAME is NULL!")
+
+            basic_return_error(HTTP_STATUS_INTERNAL_SERVER_ERROR);
             continue;
         }
 
         /* Need a copy of the string - will be freed by jse_context_destroy */
-        filename = strdup( fname );
+        filename = strdup(filenameenv);
         if (filename == NULL)
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno));
+            JSE_ERROR("strdup() failed: %s", strerror(errno))
+
+            basic_return_error(HTTP_STATUS_INTERNAL_SERVER_ERROR);
             continue;
         }
 #endif
@@ -1370,21 +1408,36 @@ int main(int argc, char **argv)
         jse_context_t *jse_ctx = jse_context_create(filename);
         if (jse_ctx != NULL)
         {
-            init_duktape(jse_ctx);
+            if (init_duktape(jse_ctx) != NULL)
+            {
+                if (handle_request(jse_ctx) == 0)
+                {
+                    ret = 0;
+                }
 
-            handle_request(jse_ctx);
-
-            cleanup_duktape(jse_ctx);
+                cleanup_duktape(jse_ctx);
+            }
 
             jse_context_destroy(jse_ctx);
+        }
+
+#ifdef ENABLE_FASTCGI
+        if (ret != 0)
+#else
+        if ((ret != 0) && (process_get || process_post || process_cookie))
+#endif
+        {
+            basic_return_error(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+            ret = 0;
         }
 #ifdef ENABLE_FASTCGI
     }
 #endif
 
+    /* An error is returned only when it hasn't already been handled. */
     if (ret != 0)
     {
-        return EXIT_FATAL;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
