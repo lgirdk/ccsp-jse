@@ -36,6 +36,8 @@ extern duk_int_t ccsp_cosa_module_open(duk_context *ctx);
 #define HTTP_STATUS_CREATED                201
 #define HTTP_STATUS_ACCEPTED               202
 #define HTTP_STATUS_NO_CONTENT             204
+#define HTTP_STATUS_MOVED_PERMANENTLY      301
+#define HTTP_STATUS_FOUND                  302
 #define HTTP_STATUS_BAD_REQUEST            400
 #define HTTP_STATUS_UNAUTHORIZED           401
 #define HTTP_STATUS_FORBIDDEN              403
@@ -257,6 +259,12 @@ static char* msg_for_http_status(int status)
             break;
         case HTTP_STATUS_CREATED:
             msg = "Created";
+            break;
+        case HTTP_STATUS_MOVED_PERMANENTLY:
+            msg = "Moved Permanently";
+            break;
+        case HTTP_STATUS_FOUND:
+            msg = "Found";
             break;
         case HTTP_STATUS_FORBIDDEN:
             msg = "Forbidden";
@@ -1008,12 +1016,15 @@ static duk_int_t create_request_object(jse_context_t *jse_ctx)
 
     add_env_as_object_property(ctx, idx, "DOCUMENT_ROOT");
     add_env_as_object_property(ctx, idx, "HTTP_COOKIE");
+    add_env_as_object_property(ctx, idx, "HTTP_HOST");
     add_env_as_object_property(ctx, idx, "HTTP_REFERER");
     add_env_as_object_property(ctx, idx, "QUERY_STRING");
     add_env_as_object_property(ctx, idx, "REQUEST_METHOD");
     add_env_as_object_property(ctx, idx, "REQUEST_URI");
     add_env_as_object_property(ctx, idx, "SCRIPT_FILENAME");
     add_env_as_object_property(ctx, idx, "SCRIPT_NAME");
+    add_env_as_object_property(ctx, idx, "SERVER_NAME");
+    add_env_as_object_property(ctx, idx, "SERVER_PORT");
 
     duk_put_global_string(ctx, JSE_REQUEST_OBJECT_NAME);
 
