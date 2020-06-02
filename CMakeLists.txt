@@ -82,7 +82,6 @@ endif(FAST_CGI)
 if(BUILD_RDK)
   set(JSE_SOURCES
     ${JSE_SOURCES}
-    source/jse_internal.c
     source/jse_cosa.c)
   set(JSE_LIBS "${JSE_LIBS} -lccsp_common -ldbus-1")
 endif(BUILD_RDK)
