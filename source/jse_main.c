@@ -21,10 +21,7 @@
 #include "jse_jscommon.h"
 
 #include "jse_xml.h"
-
-#ifdef BUILD_RDK
-extern duk_int_t ccsp_cosa_module_open(duk_context *ctx);
-#endif
+#include "jse_cosa.h"
 
 #define MAX_SCRIPT_SIZE JSE_MAX_FILE_SIZE
 #define EXIT_FATAL 3
@@ -942,7 +939,7 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
 #ifdef BUILD_RDK
     else
     {
-        if ((ret = ccsp_cosa_module_open(jse_ctx->ctx)) != 0)
+        if ((ret = jse_bind_cosa(jse_ctx->ctx)) != 0)
         {
             JSE_ERROR("Failed to bind cosa functions!");
         }
@@ -1198,6 +1195,7 @@ static void help(const char* name)
 "  -h, --help               Display this help.\n" \
 "  -p, --post               Handle POST requests.\n" \
 "  -v, --verbose            Verbosity. Multiple uses increases vebosity.\n" \
+"  -n, --no-ccsp            Do not initialise CCSP.\n" \
 "\n" \
 "Exit status:\n" \
 " 0  if OK,\n" \
@@ -1214,10 +1212,13 @@ int main(int argc, char **argv)
     char * filename = NULL;
     char * arg = NULL;
     duk_int_t ret = DUK_ERR_ERROR;
+    
+    /* By default we initialise CCSP unless turned off on the command line */
+    bool init_ccsp = true;
 
     JSE_DEBUG_INIT()
     JSE_VERBOSE("main()")
-
+    
     while (1)
     {
         int c, option_index = 0;
@@ -1228,10 +1229,11 @@ int main(int argc, char **argv)
             {"help",     no_argument,       0, 'h' },
             {"post",     no_argument,       0, 'p' },
             {"verbose",  no_argument,       0, 'v' },
+            {"no-ccsp",  no_argument,       0, 'n' },
             {0,          0,                 0,  0  }
         };
 
-        c = getopt_long(argc, argv, "cghpv", long_options, &option_index);
+        c = getopt_long(argc, argv, "cghpvn", long_options, &option_index);
         if (c == -1)
         {
             break;
@@ -1260,6 +1262,11 @@ int main(int argc, char **argv)
 
             case 'v':
                 jse_verbosity ++;
+                break;
+
+            case 'n':
+                JSE_DEBUG("CCSP init disabled")
+                init_ccsp = false;
                 break;
 
             default:
@@ -1321,11 +1328,27 @@ int main(int argc, char **argv)
             {
                 jse_verbosity ++;
             }
+            else
+            if (!strcmp("-n", arg) || !strcmp("--no-ccsp", arg))
+            {
+                init_ccsp = false;
+            }
 
             arg = strtok(NULL, " ");
         }
     }
 
+    /* Initialise cosa before the main loop */
+    if (init_ccsp)
+    {
+        ret = jse_cosa_init();
+        if (ret != 0)
+        {
+            JSE_ERROR("cosa_init failed")
+            exit(EXIT_FAILURE);
+        }
+    }
+	
     JSE_VERBOSE("main loop...")
 
 #ifdef ENABLE_FASTCGI

@@ -31,6 +31,7 @@
 #include <duktape.h>
 
 #include "jse_debug.h"
+#include "jse_cosa.h"
 
 #define COMPONENT_NAME "ccsp.phpextension"
 #define CONF_FILENAME "/tmp/ccsp_msg.cfg"
@@ -216,7 +217,7 @@ static void CheckAndSetSubsystemPrefix(char **ppDotStr, char *pSubSystemPrefix)
  *
  * @return an error status or 0.
  */
-static int cosa_init()
+int jse_cosa_init()
 {
     FILE *fp = NULL;
     int returnStatus = 0;
@@ -257,7 +258,7 @@ static int cosa_init()
     CCSP_Msg_SleepInMilliSeconds(1000);
     CCSP_Message_Bus_Register_Path(bus_handle, msg_path, path_message_func, 0);
 #endif
-    return 1;
+    return returnStatus;
 }
 
 static void cosa_shutdown()
@@ -1441,16 +1442,15 @@ static const duk_function_list_entry ccsp_cosa_funcs[] = {
     {NULL, NULL, 0}};
 
 /**
- * @brief Initialisation of CCSP and bind function props
+ * @brief Bind CCSP functions
  *
  * @param ctx the duktape context.
  * @return an error status or 0.
  */
-duk_int_t ccsp_cosa_module_open(duk_context *ctx)
+duk_int_t jse_bind_cosa(duk_context *ctx)
 {
     JSE_ASSERT(ctx != NULL)
 
-    cosa_init();
     duk_push_object(ctx);
     duk_put_function_list(ctx, -1, ccsp_cosa_funcs);
 
