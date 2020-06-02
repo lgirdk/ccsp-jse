@@ -408,6 +408,51 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
 }
 
 /**
+ * The binding for removeFile()
+ *
+ * This function removes the file specified in the string argument.
+ *
+ * @param ctx the duktape context.
+ * @return an error status or 0.
+ */
+static duk_ret_t do_remove_file(duk_context * ctx)
+{
+    duk_ret_t ret = DUK_RET_ERROR;
+    const char * filename = NULL;
+
+    JSE_VERBOSE("do_read_file_as_string()")
+
+    if (!duk_is_string(ctx, -1))
+    {
+        JSE_ERROR("Filename is not a string!")
+        (void) duk_type_error(ctx, "Filename is not a string!");
+    }
+    else
+    {
+        filename = duk_safe_to_string(ctx, 0);
+        if (filename == NULL)
+        {
+            JSE_ERROR("Filename is null")
+        }
+        else
+        {
+            if (unlink(filename) == -1)
+            {
+                int errnotmp = errno;
+                JSE_ERROR("%s: %s", filename, strerror(errnotmp))
+
+                /* This does not return */
+                (void) duk_uri_error(ctx, "%s: %s", filename, strerror(errnotmp));
+            }
+
+            ret = 0;
+        }
+    }
+
+    return ret;
+}
+
+/**
  * Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
@@ -432,6 +477,9 @@ duk_int_t jse_bind_jscommon(jse_context_t* jse_ctx)
 
         duk_push_c_function(jse_ctx->ctx, do_write_as_file, DUK_VARARGS);
         duk_put_global_string(jse_ctx->ctx, "writeAsFile");
+
+        duk_push_c_function(jse_ctx->ctx, do_remove_file, 1);
+        duk_put_global_string(jse_ctx->ctx, "removeFile");
 
         ret = 0;
     }
