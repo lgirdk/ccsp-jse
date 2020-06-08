@@ -1445,15 +1445,22 @@ static const duk_function_list_entry ccsp_cosa_funcs[] = {
 /**
  * @brief Bind CCSP functions
  *
- * @param ctx the duktape context.
+ * @param jse_ctx the jse context.
  * @return an error status or 0.
  */
-duk_int_t jse_bind_cosa(duk_context *ctx)
+duk_int_t jse_bind_cosa(jse_context_t* jse_ctx)
 {
-    JSE_ASSERT(ctx != NULL)
+    duk_int_t ret = DUK_ERR_ERROR;
 
-    duk_push_object(ctx);
-    duk_put_function_list(ctx, -1, ccsp_cosa_funcs);
+    if (jse_ctx != NULL)
+    {
+        duk_push_object(jse_ctx->ctx);
+        duk_put_function_list(jse_ctx->ctx, -1, ccsp_cosa_funcs);
+        duk_put_global_string(jse_ctx->ctx, "Cosa");
 
-    return 0;
+        ret = 0;
+    }
+
+    JSE_VERBOSE("ret=%d", ret)
+    return ret;
 }

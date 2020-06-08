@@ -15,10 +15,10 @@ int jse_cosa_init();
 /**
  * @brief Bind CCSP functions
  *
- * @param ctx the duktape context.
+ * @param jse_ctx the jse context.
  * @return an error status or 0.
  */
-duk_int_t jse_bind_cosa(duk_context *ctx);
+duk_int_t jse_bind_cosa(jse_context_t* jse_ctx);
 
 #if defined(__cplusplus)
 }

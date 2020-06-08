@@ -937,16 +937,9 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
     }
 #endif
 #ifdef BUILD_RDK
-    else
+    else if ((ret = jse_bind_cosa(jse_ctx)) != 0)
     {
-        if ((ret = jse_bind_cosa(jse_ctx->ctx)) != 0)
-        {
-            JSE_ERROR("Failed to bind cosa functions!")
-        }
-        else
-        {
-            duk_put_global_string(jse_ctx->ctx, "Cosa");
-        }
+        JSE_ERROR("Failed to bind cosa functions!")
     }
 #endif
     return ret;
