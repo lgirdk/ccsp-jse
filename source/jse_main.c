@@ -229,7 +229,7 @@ static int header_set(char * name, char * value)
         }
         else
         {
-            JSE_DEBUG("calloc() failed: %s", strerror(errno));
+            JSE_DEBUG("calloc() failed: %s", strerror(errno))
         }
     }
 
@@ -333,7 +333,7 @@ static void return_error(jse_context_t *jse_ctx, int status, const char* mimetyp
     }
     va_end(ap);
 
-    JSE_ERROR(buffer);
+    JSE_ERROR(buffer)
 
     /* Setting the content type terminates the header so output the status now */
     return_http_status(status);
@@ -656,7 +656,7 @@ static duk_ret_t do_setContentType(duk_context * ctx)
 
             http_contenttype = string;
 
-            JSE_DEBUG("mimetype = %s", http_contenttype);
+            JSE_DEBUG("mimetype = %s", http_contenttype)
 
             /* Return undefined */
             ret = 0;
@@ -861,7 +861,7 @@ static duk_ret_t do_setHeader(duk_context * ctx)
                         }
                         else
                         {
-                            JSE_ERROR("strdup() failed: %s", strerror(errno));
+                            JSE_ERROR("strdup() failed: %s", strerror(errno))
                             free(name);
                         }
                     }
@@ -876,7 +876,7 @@ static duk_ret_t do_setHeader(duk_context * ctx)
             }
             else
             {
-                JSE_ERROR("Illegal header name: \"%s\"", name);
+                JSE_ERROR("Illegal header name: \"%s\"", name)
                 free(name);
 
                 ret = DUK_RET_TYPE_ERROR;
@@ -884,7 +884,7 @@ static duk_ret_t do_setHeader(duk_context * ctx)
         }
         else
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno));
+            JSE_ERROR("strdup() failed: %s", strerror(errno))
         }
     }
     else
@@ -908,7 +908,7 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
     duk_int_t ret = 0;
 
     JSE_VERBOSE("bind_functions()")
-    JSE_ASSERT(jse_ctx != NULL);
+    JSE_ASSERT(jse_ctx != NULL)
 
     /* Bind built ins */
     duk_push_c_function(jse_ctx->ctx, do_print, 1);
@@ -928,12 +928,12 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
 
     if ((ret = jse_bind_jscommon(jse_ctx)) != 0)
     {
-        JSE_ERROR("Failed to bind jscommon functions!");
+        JSE_ERROR("Failed to bind jscommon functions!")
     }
 #ifdef ENABLE_LIBXML2
     else if ((ret = jse_bind_xml(jse_ctx)) != 0)
     {
-        JSE_ERROR("Failed to bind xml functions!");
+        JSE_ERROR("Failed to bind xml functions!")
     }
 #endif
 #ifdef BUILD_RDK
@@ -941,7 +941,7 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
     {
         if ((ret = jse_bind_cosa(jse_ctx->ctx)) != 0)
         {
-            JSE_ERROR("Failed to bind cosa functions!");
+            JSE_ERROR("Failed to bind cosa functions!")
         }
         else
         {

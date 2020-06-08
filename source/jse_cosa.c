@@ -263,7 +263,7 @@ int jse_cosa_init()
 
 static void cosa_shutdown()
 {
-    JSE_VERBOSE("COSA PHP extension exits...\n");
+    JSE_VERBOSE("COSA PHP extension exits...\n")
 #ifndef BUILD_RBUS /*TODO fix ccsp_message_bus.h: it doesn't define CCSP_Message_Bus_Exit if BUILD_RBUS enabled*/
     if (bus_handle)
     {
@@ -613,7 +613,7 @@ static duk_ret_t setStr(duk_context *ctx)
 
                 if (size != 1 || strcmp(structGet[0]->parameterName, dotstr) != 0)
                 {
-                    JSE_ERROR("%s: miss match", __FUNCTION__);
+                    JSE_ERROR("%s: miss match", __FUNCTION__)
                 }
                 else
                 {
@@ -726,7 +726,7 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
 
             if (returnStatus != CCSP_SUCCESS)
             {
-                JSE_ERROR("Failed on CcspBaseIf_GetNextLevelInstances, error code = %d.\n", returnStatus);
+                JSE_ERROR("Failed on CcspBaseIf_GetNextLevelInstances, error code = %d.\n", returnStatus)
             }
             else
             {
@@ -942,7 +942,8 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
     }
     else
     {
-        JSE_DEBUG("DmExtGetStrsWithRootObj -- RootObjName: %s, destination component: %s, %s\n", pRootObjName, pDestComponentName, pDestPath);
+        JSE_DEBUG("DmExtGetStrsWithRootObj -- RootObjName: %s, destination component: %s, %s\n", 
+            pRootObjName, pDestComponentName, pDestPath)
     }
 
     /*
@@ -996,7 +997,7 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
 
     if (CCSP_SUCCESS != returnStatus)
     {
-        JSE_ERROR("Failed on CcspBaseIf_getParameterValues, error code = %d.\n", returnStatus);
+        JSE_ERROR("Failed on CcspBaseIf_getParameterValues, error code = %d.\n", returnStatus)
         goto EXIT1;
     }
     else

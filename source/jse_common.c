@@ -92,7 +92,7 @@ size_t jse_read_fd(int fd, char **pbuffer, size_t *psize)
                 /* Can't expand it any more. */
                 if (buffer_size == JSE_MAX_FILE_SIZE)
                 {
-                    JSE_ERROR("File too large!");
+                    JSE_ERROR("File too large!")
                     goto error;
                 }
 
@@ -203,7 +203,7 @@ size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize)
 
     if (size > JSE_MAX_FILE_SIZE)
     {
-        JSE_ERROR("File too large!");
+        JSE_ERROR("File too large!")
         goto error;
     }
 

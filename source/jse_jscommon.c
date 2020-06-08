@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include "jse_debug.h"
-#include "jse_common.h"
 #include "jse_jscommon.h"
 
 /**
@@ -39,20 +38,20 @@ static duk_int_t run_buffer(duk_context *ctx, const char* buffer, size_t size, c
 
     if (ret != 0)
     {
-        JSE_ERROR("Compile failed!");
+        JSE_ERROR("Compile failed!")
     }
     else
     {
         ret = duk_pcall(ctx, 0);
         if (ret != DUK_EXEC_SUCCESS)
         {
-            JSE_ERROR("Execution failed!");
+            JSE_ERROR("Execution failed!")
         }
         else
         {
             /* duk_safe_to_string() coerces the value on the stack in to a string
                leaving it on the stack (as well as returning the value) */
-            JSE_DEBUG("Results: %s", duk_safe_to_string(ctx, -1));
+            JSE_DEBUG("Results: %s", duk_safe_to_string(ctx, -1))
 
             /* pop the coerced string from the stack */
             duk_pop(ctx);
@@ -198,7 +197,7 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
            -1, -2, -3 from the bottom */
         if (!duk_is_number(ctx, 1))
         {
-            JSE_ERROR("Level is not a number!");
+            JSE_ERROR("Level is not a number!")
             (void) duk_type_error(ctx, "Level is not a number!");
         }
         else
@@ -212,7 +211,7 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
     {
         if (!duk_is_string(ctx, 2))
         {
-            JSE_ERROR("Filename is not a string!");
+            JSE_ERROR("Filename is not a string!")
             (void) duk_type_error(ctx, "Filename is not a string!");
         }
         else
@@ -226,7 +225,7 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
     {
         if (!duk_is_number(ctx, 3))
         {
-            JSE_ERROR("Line is not a number!");
+            JSE_ERROR("Line is not a number!")
             (void) duk_type_error(ctx, "Line is not a number!");
         }
         else

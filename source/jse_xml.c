@@ -107,7 +107,7 @@ static duk_ret_t do_objectToXMLString(duk_context * ctx)
                 }
                 else
                 {
-                    JSE_WARNING("\"object\" is not an object: %d", duk_get_type(ctx, -1));
+                    JSE_WARNING("\"object\" is not an object: %d", duk_get_type(ctx, -1))
 
                     /*  Convert what ever it really is to a string */
                     xmlNodeSetContent(root, BAD_CAST duk_safe_to_string(ctx, -1));
@@ -125,7 +125,7 @@ static duk_ret_t do_objectToXMLString(duk_context * ctx)
         }
         else
         {
-            JSE_ERROR("Failed to create XML doc");
+            JSE_ERROR("Failed to create XML doc")
         }
 
     }
