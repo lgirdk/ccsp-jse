@@ -9,6 +9,7 @@
 
 #include "jse_debug.h"
 #include "jse_jscommon.h"
+#include "jse_jserror.h"
 
 /**
  * Runs the code stored in a buffer, optionally identified by a filename.
@@ -457,7 +458,7 @@ static duk_ret_t do_remove_file(duk_context * ctx)
  * @param jse_ctx the jse context.
  * @return an error status or 0.
  */
-duk_int_t jse_bind_jscommon(jse_context_t* jse_ctx)
+duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
 {
     duk_int_t ret = DUK_ERR_ERROR;
 
@@ -465,22 +466,30 @@ duk_int_t jse_bind_jscommon(jse_context_t* jse_ctx)
 
     if (jse_ctx != NULL)
     {
-        duk_push_c_function(jse_ctx->ctx, do_include, 1);
-        duk_put_global_string(jse_ctx->ctx, "include");
+        /* jscommon is dependent upon jserror error objects so bind here */
+        if ((ret = jse_bind_jserror(jse_ctx)) != 0)
+        {
+            JSE_ERROR("Failed to bind JS error objects")
+        }
+        else
+        {
+            duk_push_c_function(jse_ctx->ctx, do_include, 1);
+            duk_put_global_string(jse_ctx->ctx, "include");
 
-        duk_push_c_function(jse_ctx->ctx, do_debugPrint, DUK_VARARGS);
-        duk_put_global_string(jse_ctx->ctx, "debugPrint");
+            duk_push_c_function(jse_ctx->ctx, do_debugPrint, DUK_VARARGS);
+            duk_put_global_string(jse_ctx->ctx, "debugPrint");
 
-        duk_push_c_function(jse_ctx->ctx, do_read_file_as_string, 1);
-        duk_put_global_string(jse_ctx->ctx, "readFileAsString");
+            duk_push_c_function(jse_ctx->ctx, do_read_file_as_string, 1);
+            duk_put_global_string(jse_ctx->ctx, "readFileAsString");
 
-        duk_push_c_function(jse_ctx->ctx, do_write_as_file, DUK_VARARGS);
-        duk_put_global_string(jse_ctx->ctx, "writeAsFile");
+            duk_push_c_function(jse_ctx->ctx, do_write_as_file, DUK_VARARGS);
+            duk_put_global_string(jse_ctx->ctx, "writeAsFile");
 
-        duk_push_c_function(jse_ctx->ctx, do_remove_file, 1);
-        duk_put_global_string(jse_ctx->ctx, "removeFile");
+            duk_push_c_function(jse_ctx->ctx, do_remove_file, 1);
+            duk_put_global_string(jse_ctx->ctx, "removeFile");
 
-        ret = 0;
+            ret = 0;
+        }
     }
 
     JSE_VERBOSE("ret=%d", ret)

@@ -24,7 +24,7 @@ duk_ret_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size
  * @param jse_ctx the jse context.
  * @return an error status or 0.
  */
-duk_int_t jse_bind_jscommon(jse_context_t *jse_ctx);
+duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx);
 
 #if defined(__cplusplus)
 }
