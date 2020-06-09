@@ -20,7 +20,7 @@
  * @param filename the optional filename (may be null).
  * @return an error status or 0.
  */
-static duk_int_t run_buffer(duk_context *ctx, const char* buffer, size_t size, const char* filename)
+static duk_int_t run_buffer(duk_context * ctx, const char * buffer, size_t size, const char * filename)
 {
     duk_int_t ret = DUK_EXEC_ERROR;
 
@@ -72,7 +72,7 @@ static duk_int_t run_buffer(duk_context *ctx, const char* buffer, size_t size, c
  * @param size the size of the context.
  * @return an error status or 0.
  */
-duk_int_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size)
+duk_int_t jse_run_buffer(jse_context_t * jse_ctx, const char * buffer, size_t size)
 {
     duk_int_t ret = DUK_EXEC_ERROR;
 
@@ -95,7 +95,7 @@ duk_int_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size
  * @param ctx the duktape context.
  * @return an error status or 0.
  */
-static duk_ret_t do_include(duk_context *ctx)
+static duk_ret_t do_include(duk_context * ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
     const char * filename = NULL;
@@ -108,15 +108,16 @@ static duk_ret_t do_include(duk_context *ctx)
 
     if (!duk_is_string(ctx, -1))
     {
-        JSE_ERROR("Filename is not a string!")
-        (void) duk_type_error(ctx, "Filename is not a string!");
+        /* This does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Filename is not a string!");
     }
     else
     {
         filename = duk_safe_to_string(ctx, -1);
         if (filename == NULL)
         {
-            JSE_ERROR("Filename is null")
+            /* This does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Filename is null");
         }
         else
         {
@@ -124,15 +125,13 @@ static duk_ret_t do_include(duk_context *ctx)
 
             if (stat(filename, &s) != 0)
             {
-                int errnotmp = errno;
-                JSE_ERROR("%s: %s", filename, strerror(errnotmp))
-                (void) duk_uri_error(ctx, "%s: %s", filename, strerror(errnotmp));
+                int _errno = errno;
+                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
             }
             else
             if (!S_ISREG(s.st_mode))
             {
-                JSE_ERROR("%s: not a regular file", filename)
-                (void) duk_uri_error(ctx, "%s: not a regular file", filename);
+                JSE_THROW_URI_ERROR(ctx, "%s: not a regular file", filename);
             }
             else
             {
@@ -188,7 +187,8 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
     /* Must have at least one argument */
     if (count == 0)
     {
-        (void) duk_type_error(ctx, "Insufficient arguments!");
+        /* This does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Insufficient arguments!");
     }
 
     /* debug level */
@@ -198,8 +198,8 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
            -1, -2, -3 from the bottom */
         if (!duk_is_number(ctx, 1))
         {
-            JSE_ERROR("Level is not a number!")
-            (void) duk_type_error(ctx, "Level is not a number!");
+            /* This does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Level is not a number!");
         }
         else
         {
@@ -212,8 +212,8 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
     {
         if (!duk_is_string(ctx, 2))
         {
-            JSE_ERROR("Filename is not a string!")
-            (void) duk_type_error(ctx, "Filename is not a string!");
+            /* This does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Filename is not a string!");
         }
         else
         {
@@ -226,8 +226,8 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
     {
         if (!duk_is_number(ctx, 3))
         {
-            JSE_ERROR("Line is not a number!")
-            (void) duk_type_error(ctx, "Line is not a number!");
+            /* This does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Line is not a number!");
         }
         else
         {
@@ -263,15 +263,16 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
 
     if (!duk_is_string(ctx, -1))
     {
-        JSE_ERROR("Filename is not a string!")
-        (void) duk_type_error(ctx, "Filename is not a string!");
+        /* This does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Filename is not a string!");
     }
     else
     {
         filename = duk_safe_to_string(ctx, -1);
         if (filename == NULL)
         {
-            JSE_ERROR("Filename is null")
+            /* This does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Filename is null");
         }
         else
         {
@@ -279,15 +280,15 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
 
             if (stat(filename, &s) != 0)
             {
-                int errnotmp = errno;
-                JSE_ERROR("%s: %s", filename, strerror(errnotmp))
-                (void) duk_uri_error(ctx, "%s: %s", filename, strerror(errnotmp));
+                int _errno = errno;
+                /* This does not return */
+                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
             }
             else
             if (!S_ISREG(s.st_mode))
             {
-                JSE_ERROR("%s: not a regular file", filename)
-                (void) duk_uri_error(ctx, "%s: not a regular file", filename);
+                /* This does not return */
+                JSE_THROW_URI_ERROR(ctx, "%s: not a regular file", filename);
             }
             else
             {
@@ -334,22 +335,23 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
 
     if (count < 2)
     {
-        JSE_ERROR("Insufficient arguments!")
-        (void) duk_type_error(ctx, "Insufficient arguments!");
+        /* This does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Insufficient arguments!");
     }
     else
     {
         if (!duk_is_string(ctx, 0))
         {
-            JSE_ERROR("Filename is not a string!")
-            (void) duk_type_error(ctx, "Filename is not a string!");
+            /* This does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Filename is not a string!");
         }
         else
         {
             filename = duk_safe_to_string(ctx, 0);
             if (filename == NULL)
             {
-                JSE_ERROR("Filename is null")
+                /* This does not return */
+                JSE_THROW_TYPE_ERROR(ctx, "Filename is null");
             }
             else
             {
@@ -373,9 +375,9 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                     fd = open(filename, flags, S_IRWXU);
                     if (fd == -1)
                     {
-                        int errnotmp = errno;
-                        JSE_ERROR("%s: %s", filename, strerror(errnotmp))
-                        (void) duk_uri_error(ctx, "%s: %s", filename, strerror(errnotmp));
+                        int _errno = errno;
+                        /* This does not return */
+                        JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
                     }
                     else
                     {
@@ -386,9 +388,10 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                         TEMP_FAILURE_RETRY(bytes = write(fd, str, len));
 
                         if (bytes == -1) {
-                            int errnotmp = errno;
-                            JSE_ERROR("%s: %s", filename, strerror(errnotmp))
-                            (void) duk_uri_error(ctx, "%s: %s", filename, strerror(errnotmp));
+                            int _errno = errno;
+                            close(fd);
+                            /* This does not return */
+                            JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
                         }
 
                         close(fd);
@@ -397,7 +400,8 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                 }
                 else
                 {
-                    (void) duk_type_error(ctx, "Unsupported type: %d", type);
+                    /* This does not return */
+                    JSE_THROW_TYPE_ERROR(ctx, "Unsupported type: %d", type);
                 }
             }
         }
@@ -424,25 +428,24 @@ static duk_ret_t do_remove_file(duk_context * ctx)
 
     if (!duk_is_string(ctx, -1))
     {
-        JSE_ERROR("Filename is not a string!")
-        (void) duk_type_error(ctx, "Filename is not a string!");
+        /* This does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Filename is not a string!");
     }
     else
     {
         filename = duk_safe_to_string(ctx, 0);
         if (filename == NULL)
         {
-            JSE_ERROR("Filename is null")
+            /* This does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Filename is null");
         }
         else
         {
             if (unlink(filename) == -1)
             {
-                int errnotmp = errno;
-                JSE_ERROR("%s: %s", filename, strerror(errnotmp))
-
+                int _errno = errno;
                 /* This does not return */
-                (void) duk_uri_error(ctx, "%s: %s", filename, strerror(errnotmp));
+                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
             }
 
             ret = 0;

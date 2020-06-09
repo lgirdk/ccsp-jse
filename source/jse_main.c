@@ -19,6 +19,7 @@
 #include "jse_debug.h"
 #include "jse_common.h"
 #include "jse_jscommon.h"
+#include "jse_jserror.h"
 
 #include "jse_xml.h"
 #include "jse_cosa.h"
@@ -578,13 +579,17 @@ static duk_ret_t do_print(duk_context *ctx)
             }
             else 
             {
-                JSE_ERROR("calloc() failed: %s", strerror(errno))
+                int _errno = errno;
                 free(string);
+                /* Does not return */
+                JSE_THROW_POSIX_ERROR(ctx, _errno, "calloc() failed: %s", strerror(_errno));
             }
         }
         else 
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno))
+            int _errno = errno;
+            /* Does not return */
+            JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
         }
     }
     else
@@ -623,8 +628,8 @@ static duk_ret_t do_setHTTPStatus(duk_context * ctx)
     }
     else
     {
-        JSE_ERROR("Invalid argument!")
-        ret = DUK_RET_TYPE_ERROR;
+        /* Does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument!");
     }
 
     JSE_VERBOSE("ret=%d", ret)
@@ -663,13 +668,15 @@ static duk_ret_t do_setContentType(duk_context * ctx)
         }
         else 
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno))
+            int _errno = errno;
+            /* Does not return */
+            JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
         }
     }
     else
     {
-        JSE_ERROR("Invalid argument \"mimetype\"!")
-        ret = DUK_RET_TYPE_ERROR;
+        /* Does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"mimetype\"!");
     }
 
     JSE_VERBOSE("ret=%d", ret)
@@ -689,7 +696,6 @@ static duk_ret_t do_setContentType(duk_context * ctx)
  */
 static duk_ret_t do_setCookie(duk_context * ctx)
 {
-    duk_ret_t ret = DUK_RET_ERROR;
     char * name = NULL;
     char * value = NULL;
     int expire_secs = 0;
@@ -702,15 +708,15 @@ static duk_ret_t do_setCookie(duk_context * ctx)
         name = strdup(duk_safe_to_string(ctx, -6));
         if (name == NULL)
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno))
-            goto error;
+            int _errno = errno;
+            /* Does not return */
+            JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
         }
     }
     else
     {
-        JSE_ERROR("Invalid argument \"name\" (%d)", duk_get_type(ctx, -6))
-        ret = DUK_RET_TYPE_ERROR;
-        goto error;
+        /* Does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"name\" (%d)", duk_get_type(ctx, -6));
     }
 
     if (duk_is_string(ctx, -5))
@@ -718,15 +724,17 @@ static duk_ret_t do_setCookie(duk_context * ctx)
         value = strdup(duk_safe_to_string(ctx, -5));
         if (value == NULL)
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno))
-            goto error;
+            int _errno = errno;
+            free(name);
+            /* Does not return */
+            JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
         }
     }
     else
     {
-        JSE_ERROR("Invalid argument \"value\" (%d)", duk_get_type(ctx, -5))
-        ret = DUK_RET_TYPE_ERROR;
-        goto error;
+        free(name);
+        /* Does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"value\" (%d)", duk_get_type(ctx, -5));
     }
 
     if (duk_is_number(ctx, -4))
@@ -735,9 +743,10 @@ static duk_ret_t do_setCookie(duk_context * ctx)
     }
     else
     {
-        JSE_ERROR("Invalid argument \"expire_secs\" (%d)", duk_get_type(ctx, -4))
-        ret = DUK_RET_TYPE_ERROR;
-        goto error;
+        free(value);
+        free(name);
+        /* Does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"expire_secs\" (%d)", duk_get_type(ctx, -4));
     }
 
     if (!duk_is_null(ctx, -3))
@@ -747,14 +756,19 @@ static duk_ret_t do_setCookie(duk_context * ctx)
             path = strdup(duk_safe_to_string(ctx, -3));
             if (path == NULL)
             {
-                JSE_ERROR("strdup() failed: %s", strerror(errno))
-                goto error;
+                int _errno = errno;
+                free(value);
+                free(name);
+                /* Does not return */
+                JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
             }
         }
         else
         {
-            JSE_ERROR("Invalid argument \"path\" (%d)", duk_get_type(ctx, -3))
-            goto error;
+            free(value);
+            free(name);
+            /* Does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"path\" (%d)", duk_get_type(ctx, -3));
         }
     }
 
@@ -765,14 +779,21 @@ static duk_ret_t do_setCookie(duk_context * ctx)
             domain = strdup(duk_safe_to_string(ctx, -2));
             if (domain == NULL)
             {
-                JSE_ERROR("strdup() failed: %s", strerror(errno))
-                goto error;
+                int _errno = errno;
+                free(value);
+                free(name);
+                free(path); /* path may be NULL but free(NULL) is a NOP per C99 */
+                /* Does not return */
+                JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
             }
         }
         else
         {
-            JSE_ERROR("Invalid argument \"domain\" (%d)", duk_get_type(ctx, -2))
-            goto error;
+            free(value);
+            free(name);
+            free(path); /* path may be NULL but free(NULL) is a NOP per C99 */
+            /* Does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"domain\" (%d)", duk_get_type(ctx, -2));
         }
     }
 
@@ -782,8 +803,12 @@ static duk_ret_t do_setCookie(duk_context * ctx)
     }
     else
     {
-        JSE_ERROR("Invalid argument \"secure\" (%d)", duk_get_type(ctx, -1))
-        goto error;
+        free(value);
+        free(name);
+        free(path);   /* path may be NULL but free(NULL) is a NOP per C99 */
+        free(domain); /* domain may be NULL but free(NULL) is a NOP per C99 */
+        /* Does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"secure\" (%d)", duk_get_type(ctx, -1));
     }
 
     cookie_destroy(&http_cookie);
@@ -797,25 +822,6 @@ static duk_ret_t do_setCookie(duk_context * ctx)
 
     JSE_VERBOSE("ret=0")
     return 0;
-
-error:
-    if (domain != NULL)
-    {
-        free(domain);
-    }
-
-    if (path != NULL)
-    {
-        free(path);
-    }
-
-    if (value != NULL)
-    {
-        free(value);
-    }
-
-    JSE_VERBOSE("ret=%d", ret)
-    return ret;
 }
 
 /**
@@ -861,36 +867,38 @@ static duk_ret_t do_setHeader(duk_context * ctx)
                         }
                         else
                         {
-                            JSE_ERROR("strdup() failed: %s", strerror(errno))
+                            int _errno = errno;
                             free(name);
+                            /* Does not return */
+                            JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
                         }
                     }
                     else
                     {
-                        JSE_ERROR("Invalid argument: value (%d)", duk_get_type(ctx, -1))
                         free(name);
-
-                        ret = DUK_RET_TYPE_ERROR;
+                        /* Does not return */
+                        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument: value (%d)", duk_get_type(ctx, -1));
                     }
                 }
             }
             else
             {
-                JSE_ERROR("Illegal header name: \"%s\"", name)
                 free(name);
-
-                ret = DUK_RET_TYPE_ERROR;
+                /* Does not return */
+                JSE_THROW_TYPE_ERROR(ctx, "Illegal header name: \"%s\"", name);
             }
         }
         else
         {
-            JSE_ERROR("strdup() failed: %s", strerror(errno))
+            int _errno = errno;
+            /* Does not return */
+            JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
         }
     }
     else
     {
-       JSE_ERROR("Invalid argument \"name\" (%d)", duk_get_type(ctx, -2))
-       ret = DUK_RET_TYPE_ERROR;
+        /* Does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"name\" (%d)", duk_get_type(ctx, -2));
     }
 
     JSE_VERBOSE("ret=%d", ret)
