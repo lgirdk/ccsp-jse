@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <string.h>
 
 #include "jse_debug.h"
@@ -456,6 +457,106 @@ static duk_ret_t do_remove_file(duk_context * ctx)
 }
 
 /**
+ * The binding for listDirectory()
+ *
+ * This function lists the directory specified in the string argument.
+ * This function returns all items in the directory, files, 
+ * sub-durectories, symlinks etc. It does not recurse.
+ *
+ * @param ctx the duktape context.
+ * @return an error status or 0.
+ */
+static duk_ret_t do_list_directory(duk_context * ctx)
+{
+    duk_ret_t ret = DUK_RET_ERROR;
+    const char * dirname = NULL;
+
+    JSE_VERBOSE("do_list_directory()")
+
+    if (!duk_is_string(ctx, -1))
+    {
+        /* This does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Directory name is not a string!");
+    }
+    else
+    {
+        dirname = duk_safe_to_string(ctx, 0);
+        if (dirname == NULL)
+        {
+            /* This does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Dirname is null");
+        }
+        else
+        {
+            struct stat s;
+
+            if (stat(dirname, &s) != 0)
+            {
+                int _errno = errno;
+                /* This does not return */
+                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", dirname, strerror(_errno));
+            }
+            else
+            if (!S_ISDIR(s.st_mode))
+            {
+                /* This does not return */
+                JSE_THROW_URI_ERROR(ctx, "%s: not a directory", dirname);
+            }
+            else
+            {
+                DIR* dir = opendir(dirname);
+                if (dir == NULL)
+                {
+                    int _errno = errno;
+                    /* This does not return */
+                    JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", dirname, strerror(_errno));
+                }
+                else
+                {
+                    duk_idx_t arr_idx = duk_push_array(ctx);
+                    struct dirent * de = NULL;
+                    duk_idx_t idx = 0;
+
+                    /* [ .... Array ] */
+
+                    for (idx = 0; /* EVER */ ; idx++)
+                    {
+                        errno = 0; /* Needed to test for errors */
+                        de = readdir(dir);
+                        if (de == NULL)
+                        {
+                            /* NULL is end of list OR an error indicated by errno */
+                            if (errno != 0)
+                            {
+                                int _errno = errno;
+                                (void) closedir(dir);
+                                /* This does not return */
+                                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", dirname, strerror(_errno));
+                            }
+
+                            break;
+                        }
+
+                        duk_push_string(ctx, de->d_name);
+                        /* [ .... Array, d_name ] */
+
+                        duk_put_prop_index(ctx, arr_idx, idx);
+                        /* [ .... Array ] */
+                    }
+
+                    (void) closedir(dir);
+
+                    /* Return 1 item, the array */
+                    ret = 1;
+                }
+            }
+        }
+    }
+
+    return ret;
+}
+
+/**
  * Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
@@ -490,6 +591,9 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
 
             duk_push_c_function(jse_ctx->ctx, do_remove_file, 1);
             duk_put_global_string(jse_ctx->ctx, "removeFile");
+
+            duk_push_c_function(jse_ctx->ctx, do_list_directory, 1);
+            duk_put_global_string(jse_ctx->ctx, "listDirectory");
 
             ret = 0;
         }
