@@ -31,6 +31,7 @@
 #include <duktape.h>
 
 #include "jse_debug.h"
+#include "jse_jserror.h"
 #include "jse_cosa_error.h"
 #include "jse_cosa.h"
 
@@ -89,6 +90,9 @@ static DBusHandlerResult path_message_func(DBusConnection *conn, DBusMessage *me
     char *req = 0;
     char *err_msg = DBUS_ERROR_NOT_SUPPORTED;
 
+    /* To keep compiler happy */
+    user_data = user_data;
+
     reply = dbus_message_new_method_return(message);
     if (reply == NULL)
     {
@@ -130,7 +134,7 @@ static DBusHandlerResult path_message_func(DBusConnection *conn, DBusMessage *me
 
     return DBUS_HANDLER_RESULT_HANDLED;
 }
-#endif // BUILD_RBUS
+#endif /* BUILD_RBUS */
 
 /**
  * @brief Locate component for DM key/parameter
@@ -183,7 +187,7 @@ static int UiDbusClientGetDestComponent(char *pObjName, char **ppDestComponentNa
     else
     {
         JSE_ERROR(
-            "Failed to locate the component for %s%s%s, error code = %d!\n",
+            "Failed to locate the component for %s%s%s, error code = %d!",
             pSystemPrefix,
             strlen(pSystemPrefix) ? "." : "",
             pObjName,
@@ -203,13 +207,21 @@ static void CheckAndSetSubsystemPrefix(char **ppDotStr, char *pSubSystemPrefix)
 {
     if (!strncmp(*ppDotStr, "eRT", 3)) /* check whether str has prex of eRT */
     {
-        strncpy(pSubSystemPrefix, "eRT.", 4);
-        *ppDotStr += 4; // shift four bytes to get rid of eRT:
+        /* Replace strncpy() to prevent compiler warnings */
+        pSubSystemPrefix[0] = 'e';
+        pSubSystemPrefix[1] = 'R';
+        pSubSystemPrefix[2] = 'T';
+        pSubSystemPrefix[3] = '.';
+        *ppDotStr += 4; /* shift four bytes to get rid of eRT: */
     }
-    else if (!strncmp(*ppDotStr, "eMG", 3)) // check wither str has prex of eMG
+    else if (!strncmp(*ppDotStr, "eMG", 3)) /* check wither str has prex of eMG */
     {
-        strncpy(pSubSystemPrefix, "eMG.", 4);
-        *ppDotStr += 4; // shift four bytes to get rid of eMG;
+        /* Replace strncpy() to prevent compiler warnings */
+        pSubSystemPrefix[0] = 'e';
+        pSubSystemPrefix[1] = 'M';
+        pSubSystemPrefix[2] = 'G';
+        pSubSystemPrefix[3] = '.';
+        *ppDotStr += 4; /* shift four bytes to get rid of eMG; */
     }
 }
 
@@ -245,14 +257,14 @@ int jse_cosa_init()
         sprintf(dst_pathname_cr, "eRT." CCSP_DBUS_INTERFACE_CR);
     }
 
-    JSE_VERBOSE("COSA PHP extension starts -- PC sim = %d...\n", gPcSim)
+    JSE_VERBOSE("COSA PHP extension starts -- PC sim = %d...", gPcSim)
 
-    JSE_VERBOSE("COSA PHP extension RINIT -- initialize dbus...\n")
+    JSE_VERBOSE("COSA PHP extension RINIT -- initialize dbus...")
 
     returnStatus = CCSP_Message_Bus_Init(COMPONENT_NAME, CONF_FILENAME, &bus_handle, 0, 0);
     if (returnStatus != 0)
     {
-        JSE_ERROR("Message bus init failed, error code = %d!\n", returnStatus)
+        JSE_ERROR("Message bus init failed, error code = %d!", returnStatus)
     }
 
 #ifndef BUILD_RBUS
@@ -262,6 +274,7 @@ int jse_cosa_init()
     return returnStatus;
 }
 
+#if 0 /* Not currently used */
 static void cosa_shutdown()
 {
     JSE_VERBOSE("COSA PHP extension exits...\n")
@@ -272,6 +285,7 @@ static void cosa_shutdown()
     }
 #endif
 }
+#endif
 
 /**
  * @brief Helper function to count JS array size
@@ -298,15 +312,14 @@ static int get_array_length(duk_context *ctx, duk_idx_t i)
  *
  * @param func name of bind function.
  * @param ctx the duktape context.
- * @return an error status or DUK_EXEC_SUCCESS.
+ * @return an error status or 0.
  */
 static duk_ret_t parse_parameter(const char *func, duk_context *ctx, const char *types, ...)
 {
     static const int overrun_guard = 10;
-    int i;
-    duk_ret_t ret = DUK_RET_ERROR;
-    bool success = true;
+    duk_ret_t ret = 0;
     va_list vl;
+    int i;
 
     JSE_ASSERT(func != NULL)
     JSE_ASSERT(ctx != NULL)
@@ -314,139 +327,124 @@ static duk_ret_t parse_parameter(const char *func, duk_context *ctx, const char 
 
     va_start(vl, types);
 
-    for (i = 0; types[i] && i < overrun_guard && success; ++i)
+    for (i = 0; types[i] && i < overrun_guard && (ret == 0); ++i)
     {
         switch (types[i])
         {
-        // string
-        case 's':
-        {
-            if (!duk_is_string(ctx, i))
-            {
-                JSE_ERROR("Type 's' parameter specified is not a string!")
-                (void)duk_type_error(ctx, "Type 's' parameter specified is not a string!");
-            }
-            else
-            {
-                const char **pstr = va_arg(vl, const char **);
-
-                JSE_ASSERT(pstr != NULL)
-
-                if (pstr == NULL)
+            /* string */
+            case 's':
+                if (!duk_is_string(ctx, i))
                 {
-                    success = false;
+                    /* Does not return */
+                    JSE_THROW_TYPE_ERROR(ctx, "Type 's' parameter specified is not a string!");
                 }
                 else
                 {
-                    *pstr = duk_get_string(ctx, i);
-
-                    if (*pstr)
+                    const char **pstr = va_arg(vl, const char **);
+                    if (pstr == NULL)
                     {
-                        if (!strlen(*pstr))
-                        {
-                            JSE_ERROR("%s - parameter %d (string) empty\n", func, i)
-                            success = false;
-                        }
+                        JSE_ERROR("pstr is NULL")
+                        ret = DUK_RET_ERROR;
+                        break;
                     }
                     else
                     {
-                        JSE_ERROR("%s - parameter %d (string) missing\n", func, i)
-                        success = false;
+                        *pstr = duk_get_string(ctx, i);
+                        if (*pstr)
+                        {
+                            if (!strlen(*pstr))
+                            {
+                                /* Does not return */
+                                JSE_THROW_TYPE_ERROR(ctx, "%s - parameter %d (string) empty", func, i);
+                            }
+                        }
+                        else
+                        {
+                            /* Does not return */
+                            JSE_THROW_TYPE_ERROR(ctx, "%s - parameter %d (string) missing", func, i);
+                        }
                     }
                 }
-            }
-        }
-        break;
+                break;
 
-        // boolean
-        case 'b':
-        {
-            if (!duk_is_boolean(ctx, i))
-            {
-                JSE_ERROR("Type 'b' parameter specified is not a boolean!")
-                (void)duk_type_error(ctx, "Type 'b' parameter specified is not a boolean!");
-            }
-            else
-            {
-                duk_bool_t *pbool = va_arg(vl, int *);
-
-                JSE_ASSERT(pbool != NULL)
-
-                if (pbool == NULL)
+            /* boolean */
+            case 'b':
+                if (!duk_is_boolean(ctx, i))
                 {
-                    success = false;
+                    /* Does not return */
+                    JSE_THROW_TYPE_ERROR(ctx, "Type 'b' parameter specified is not a boolean!");
                 }
                 else
                 {
-                    *pbool = duk_get_boolean(ctx, i);
+                    duk_bool_t *pbool = (duk_bool_t*)va_arg(vl, bool *);
+                    if (pbool == NULL)
+                    {
+                        JSE_ERROR("pbool is NULL")
+                        ret = DUK_RET_ERROR;
+                        break;
+                    }
+                    else
+                    {
+                        *pbool = duk_get_boolean(ctx, i);
+                    }
                 }
-            }
-        }
-        break;
+                break;
 
-        // object, e.g. JS object/array/function or duktape thread/internal object
-        case 'o':
-        {
-            if (!duk_is_object(ctx, i))
-            {
-                JSE_ERROR("Type 'o' parameter specified is not an object!")
-                (void)duk_type_error(ctx, "Type 'o' parameter specified is not an object!");
-            }
-            else
-            {
-                duk_idx_t *pidx = va_arg(vl, int *);
-
-                JSE_ASSERT(pidx != NULL)
-
-                if (pidx == NULL)
+            /* object, e.g. JS object/array/function or duktape thread/internal object */
+            case 'o':
+                if (!duk_is_object(ctx, i))
                 {
-                    success = false;
+                    /* Does not return */
+                    JSE_THROW_TYPE_ERROR(ctx, "Type 'o' parameter specified is not an object!");
                 }
                 else
                 {
-                    *pidx = i;
+                    duk_idx_t *pidx = va_arg(vl, int *);
+                    if (pidx == NULL)
+                    {
+                        JSE_ERROR("pidx is NULL")
+                        ret = DUK_RET_ERROR;
+                        break;
+                    }
+                    else
+                    {
+                        *pidx = i;
+                    }
                 }
-            }
-        }
-        break;
+                break;
 
-        // number
-        case 'n':
-        {
-            if (!duk_is_number(ctx, i))
-            {
-                JSE_ERROR("Type 'n' parameter specified is not a number!")
-                (void)duk_type_error(ctx, "Type 'n' parameter specified is not a number!");
-            }
-            else
-            {
-                duk_double_t *pdouble = va_arg(vl, double *);
-
-                JSE_ASSERT(pdouble != NULL)
-
-                if (pdouble == NULL)
+            /* number */
+            case 'n':
+                if (!duk_is_number(ctx, i))
                 {
-                    success = false;
+                    /* Does not return */
+                    JSE_THROW_TYPE_ERROR(ctx, "Type 'n' parameter specified is not a number!");
                 }
                 else
                 {
-                    *pdouble = duk_get_number(ctx, i);
+                    duk_double_t *pdouble = va_arg(vl, double *);
+                    if (pdouble == NULL)
+                    {
+                        JSE_ERROR("pdouble is NULL")
+                        ret = DUK_RET_ERROR;
+                        break;
+                    }
+                    else
+                    {
+                        *pdouble = duk_get_number(ctx, i);
+                    }
                 }
-            }
-        }
-        break;
+                break;
 
-        default:
-        {
-        }
-        break;
+            default:
+                break;
         }
     }
 
     va_end(vl);
 
-    ret = (success == true) ? DUK_EXEC_SUCCESS : DUK_RET_ERROR;
-
+    /* Success and internal errors will get us here. Type errors will have
+       been thrown which never return. */
     return ret;
 }
 
@@ -474,28 +472,30 @@ static duk_ret_t getStr(duk_context *ctx)
 
     JSE_ASSERT(ctx != NULL)
 
-    // Parse Input parameters first
-    if (DUK_EXEC_SUCCESS != parse_parameter(__FUNCTION__, ctx, "s", &dotstr))
+    /* Parse Input parameters first */
+    if (parse_parameter(__FUNCTION__, ctx, "s", &dotstr) != 0)
     {
         JSE_ERROR("Error parsing argument(s)!")
     }
     else
     {
-        // Check whether there are subsystem prefix in the dot string
-        // Split Subsytem prefix and COSA dotstr if subsystem prefix is found
+        /* Check whether there are subsystem prefix in the dot string
+           Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
         JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
 
-        // Get Destination component
+        /* Get Destination component */
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
         if (returnStatus != 0)
         {
-            JSE_ERROR("Failed on UiDbusClientGetDestComponent %s, error code = %d", dotstr, returnStatus)
+            /* Does not return */
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "Failed on UiDbusClientGetDestComponent %s", dotstr);
         }
         else
         {
-            // Get Parameter Vaues from ccsp
+            /* Get Parameter Vaues from ccsp */
             returnStatus = CcspBaseIf_getParameterValues(bus_handle,
                                                          ppDestComponentName,
                                                          ppDestPath,
@@ -506,24 +506,26 @@ static duk_ret_t getStr(duk_context *ctx)
 
             if (CCSP_SUCCESS != returnStatus)
             {
-                JSE_ERROR("Failed on CcspBaseIf_getParameterValues %s, error code = %d.\n", dotstr, returnStatus)
+                /* Does not return */
+                JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                    "Failed on CcspBaseIf_getParameterValues %s", dotstr);
             }
             else
             {
                 JSE_DEBUG(
-                    "CcspBaseIf_getParameterValues: %s, error code %d, result %s!\n",
+                    "CcspBaseIf_getParameterValues: %s, result %s",
                     dotstr,
-                    returnStatus,
                     parameterVal[0]->parameterValue)
 
                 if (size >= 1)
                 {
                     strncpy(retParamVal, parameterVal[0]->parameterValue, sizeof(retParamVal));
                 }
-                // Return only first param value
+                /* Return only first param value */
                 duk_push_string(ctx, retParamVal);
 
-                ret = 1; // value on stack top is return value
+                /* Return one item, the last value in the stack. */
+                ret = 1;
             }
             free_parameterValStruct_t(bus_handle, size, parameterVal);
         }
@@ -567,8 +569,8 @@ static duk_ret_t setStr(duk_context *ctx)
 
     JSE_ASSERT(ctx != NULL)
 
-    // Parse Parameters first
-    if (DUK_EXEC_SUCCESS != parse_parameter(__FUNCTION__, ctx, "ssb", &dotstr, &val, &bCommit))
+    /* Parse Parameters first */
+    if (parse_parameter(__FUNCTION__, ctx, "ssb", &dotstr, &val, &bCommit) != 0)
     {
         JSE_ERROR("Error parsing argument(s)!")
     }
@@ -576,40 +578,41 @@ static duk_ret_t setStr(duk_context *ctx)
     {
         bDbusCommit = (bCommit) ? 1 : 0;
 
-        // Check whether there is subsystem prefix in the dot string
-        // Split Subsytem prefix and COSA dotstr if subsystem prefix is found
+        /* Check whether there is subsystem prefix in the dot string
+           Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
         JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
 
-        // Get Destination component
+        /* Get Destination component */
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
-
         if (returnStatus != 0)
         {
-            JSE_ERROR("Failed on UiDbusClientGetDestComponent %s, error code = %d", dotstr, returnStatus)
+            /* Does not return */
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "Failed on UiDbusClientGetDestComponent %s", dotstr);
         }
         else
         {
-            // First Get the current parameter Values
+            /* First Get the current parameter Values */
             returnStatus = CcspBaseIf_getParameterValues(bus_handle,
                                                          ppDestComponentName,
                                                          ppDestPath,
                                                          &dotstr,
                                                          1,
                                                          &size,
-                                                         &structGet); //&parameterVal);
-
+                                                         &structGet);
             if (returnStatus != CCSP_SUCCESS)
             {
-                JSE_ERROR("Failed on CcspBaseIf_getParameterValues %s, error code = %d.\n", dotstr, returnStatus)
+                /* Does not return */
+                JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                    "Failed on CcspBaseIf_getParameterValues %s", dotstr);
             }
             else
             {
                 JSE_DEBUG(
-                    "setStr - CcspBaseIf_getParameterValues: %s, error code %d, result %s!\n",
+                    "setStr - CcspBaseIf_getParameterValues: %s, result %s!",
                     structGet[0]->parameterName,
-                    returnStatus,
                     structGet[0]->parameterValue)
 
                 if (size != 1 || strcmp(structGet[0]->parameterName, dotstr) != 0)
@@ -618,8 +621,6 @@ static duk_ret_t setStr(duk_context *ctx)
                 }
                 else
                 {
-                    // Its Dangerous to use strcpy() but we dont have any option
-                    // strcpy(parameterVal[0]->parameterValue,val);
                     structSet[0].parameterName = (char *)dotstr;
                     structSet[0].parameterValue = val;
                     structSet[0].type = structGet[0]->type;
@@ -637,27 +638,27 @@ static duk_ret_t setStr(duk_context *ctx)
 
                     if (CCSP_SUCCESS != returnStatus)
                     {
-                        JSE_ERROR(
-                            "CcspBaseIf_setParameterValues failed - %s:%s bCommit:%d, error code = %d, fault parameter = %s.\n",
+                        /* Does not return */
+                        JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                            "CcspBaseIf_setParameterValues failed - %s:%s bCommit:%d",
                             dotstr,
                             structSet[0].parameterValue,
-                            bDbusCommit,
-                            returnStatus,
-                            pFaultParameterNames ? pFaultParameterNames : "none")
+                            bDbusCommit);
                     }
                     else
                     {
                         JSE_DEBUG(
-                            "CcspBaseIf_setParameterValues - %s:%s bCommit:%d, error code = %d.\n",
+                            "CcspBaseIf_setParameterValues - %s:%s bCommit:%d.",
                             dotstr,
                             structSet[0].parameterValue,
-                            bDbusCommit,
-                            returnStatus);
+                            bDbusCommit);
 
+                        /* Return nothing (undefined) */
                         ret = 0;
                     }
-                    if (pFaultParameterNames)
-                        free(pFaultParameterNames);
+
+                    /* Per C99 free(NULL) is a NOP */
+                    free(pFaultParameterNames);
 
                     free_parameterValStruct_t(bus_handle, size, structGet);
                 }
@@ -687,7 +688,7 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
     int returnStatus;
     unsigned int InstNum = 0;
     unsigned int *pInstNumList = NULL;
-    unsigned int loop1 = 0, loop2 = 0;
+    size_t loop1 = 0, loop2 = 0;
     int len = 0;
     char format_s[512] = {0};
     char subSystemPrefix[6] = {0};
@@ -700,22 +701,23 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
     }
     else
     {
-        // Check whether there are subsystem prefix in the dot string
-        // Split Subsytem prefix and COSA dotstr if subsystem prefix is found
+        /* Check whether there are subsystem prefix in the dot string
+           Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
         JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
 
-        // Get Destination component
+        /* Get Destination component */
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
-
         if (returnStatus != 0)
         {
-            JSE_ERROR("Failed on UiDbusClientGetDestComponent %s, error code = %d", dotstr, returnStatus)
+            /* Does not return */
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "Failed on UiDbusClientGetDestComponent %s", dotstr);
         }
         else
         {
-        // Get Next Instance Numbers
+            /* Get Next Instance Numbers */
             returnStatus =
                 CcspBaseIf_GetNextLevelInstances(
                     bus_handle,
@@ -727,21 +729,22 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
 
             if (returnStatus != CCSP_SUCCESS)
             {
-                JSE_ERROR("Failed on CcspBaseIf_GetNextLevelInstances, error code = %d.\n", returnStatus)
+                /* Does not return */
+                JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                    "Failed on CcspBaseIf_GetNextLevelInstances");
             }
             else
             {
-                for (loop1 = 0, loop2 = 0; loop1 < (InstNum); loop1++)
+                for (loop1 = 0, loop2 = 0; loop1 < (size_t)(InstNum) && loop2 < sizeof(format_s); loop1++)
                 {
-                    len = sprintf(&format_s[loop2], "%d,", pInstNumList[loop1]);
+                    len = snprintf(&format_s[loop2], sizeof(format_s) - loop2, "%d,", pInstNumList[loop1]);
                     loop2 = loop2 + len;
                 }
 
-                //Place NULL char at the end of string
-                format_s[loop2 - 1] = 0;
                 duk_push_string(ctx, format_s);
 
-                ret = 1; // value on stack top is return value
+                /* One item returned on the bottom of the stack, the string */
+                ret = 1;
             }
             if (pInstNumList)
             {
@@ -774,24 +777,25 @@ static duk_ret_t addTblObj(duk_context *ctx)
 
     JSE_ASSERT(ctx != NULL)
 
-    if (DUK_EXEC_SUCCESS != parse_parameter(__FUNCTION__, ctx, "s", &dotstr))
+    if (parse_parameter(__FUNCTION__, ctx, "s", &dotstr) != 0)
     {
         JSE_ERROR("Error parsing argument(s)!")
     }
     else
     {
-        // Check whether there are subsystem prefix in the dot string
-        // Split Subsytem prefix and COSA dotstr if subsystem prefix is found
+        /* Check whether there are subsystem prefix in the dot string
+           Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
         JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
 
-        // Get Destination component
+        /* Get Destination component */
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
-
         if (returnStatus != 0)
         {
-            JSE_ERROR("Failed on UiDbusClientGetDestComponent %s, error code = %d", dotstr, returnStatus)
+            /* Does not return */
+                JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                    "Failed on UiDbusClientGetDestComponent %s", dotstr);
         }
         else
         {
@@ -806,16 +810,20 @@ static duk_ret_t addTblObj(duk_context *ctx)
 
             if (returnStatus != CCSP_SUCCESS)
             {
-                JSE_ERROR("addTblObj - CcspBaseIf_AddTblRow failed on %s, error code = %d!\n", dotstr, returnStatus)
+                /* Does not return */
+                JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                    "addTblObj - CcspBaseIf_AddTblRow failed on %s", dotstr);
             }
             else
             {
                 duk_push_int(ctx, returnInstNum);
 
-                ret = 1; // value on stack top is return value
+                /* One item returned on the bottom of the stack, the instance number */
+                ret = 1;
             }
         }
     }
+
     return ret;
 }
 
@@ -840,24 +848,25 @@ static duk_ret_t delTblObj(duk_context *ctx)
 
     JSE_ASSERT(ctx != NULL)
 
-    if (DUK_EXEC_SUCCESS != parse_parameter(__FUNCTION__, ctx, "s", &dotstr))
+    if (parse_parameter(__FUNCTION__, ctx, "s", &dotstr) != 0)
     {
         JSE_ERROR("Error parsing argument(s)!")
     }
     else
     {
-        // Check whether there are subsystem prefix in the dot string
-        // Split Subsytem prefix and COSA dotstr if subsystem prefix is found
+        /* Check whether there are subsystem prefix in the dot string
+           Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
         JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
 
         // Get Destination component
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
-
         if (returnStatus != 0)
         {
-            JSE_ERROR("Failed on UiDbusClientGetDestComponent %s, error code = %d", dotstr, returnStatus)
+            /* Does not return */
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "Failed on UiDbusClientGetDestComponent %s", dotstr);
         }
         else
         {
@@ -871,19 +880,17 @@ static duk_ret_t delTblObj(duk_context *ctx)
 
             if (returnStatus != CCSP_SUCCESS)
             {
-                JSE_ERROR("delTblObj - CcspBaseIf_DeleteTblRow failed on %s, error code = %d!\n", dotstr, returnStatus)
+                /* Does not return */
+                JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                    "delTblObj - CcspBaseIf_DeleteTblRow failed on %s", dotstr);
             }
             else
             {
-                returnStatus = 0;
-
-                ret = 1; // value on stack top is return value
+                /* Return nothing (undefined) */
+                ret = 0;
             }
         }
     }
-
-    //RETURN_LONG(returnStatus);
-    duk_push_int(ctx, returnStatus); // not entirely sure about this return value, but just mimicking current logic for now
 
     return ret;
 }
@@ -902,6 +909,8 @@ static duk_ret_t delTblObj(duk_context *ctx)
  */
 static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
 {
+    duk_ret_t ret = DUK_RET_ERROR;
+
     char *pRootObjName;
     char subSystemPrefix[6] = {0};
     int returnStatus = 0;
@@ -918,137 +927,141 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
     JSE_ASSERT(ctx != NULL)
 
     /* Parse paremeters */
-    if (DUK_EXEC_SUCCESS != parse_parameter(__FUNCTION__, ctx, "so", &pRootObjName, &pParamNameArray))
+    if (parse_parameter(__FUNCTION__, ctx, "so", &pRootObjName, &pParamNameArray) != 0)
     {
         JSE_ERROR("Error parsing argument(s)!")
-        returnStatus = CCSP_FAILURE;
-        goto EXIT0;
-    }
-
-    // Check whether there is subsystem prefix in the dot string
-    // Split Subsytem prefix and COSA dotstr if subsystem prefix is found
-    CheckAndSetSubsystemPrefix(&pRootObjName, subSystemPrefix);
-
-    JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
-
-    /*
-     *  Get Destination component for root obj name
-     */
-    returnStatus = UiDbusClientGetDestComponent(pRootObjName, &pDestComponentName, &pDestPath, subSystemPrefix);
-
-    if (returnStatus != 0)
-    {
-        JSE_ERROR("Failed on UiDbusClientGetDestComponent %s, error code = %d", pRootObjName, returnStatus)
-        goto EXIT0;
     }
     else
     {
-        JSE_DEBUG("DmExtGetStrsWithRootObj -- RootObjName: %s, destination component: %s, %s\n", 
-            pRootObjName, pDestComponentName, pDestPath)
-    }
+        /* Check whether there is subsystem prefix in the dot string
+        Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
+        CheckAndSetSubsystemPrefix(&pRootObjName, subSystemPrefix);
 
-    /*
-     *  Construct parameter name array
-     */
-    paramCount = get_array_length(ctx, pParamNameArray);
+        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
 
-    JSE_VERBOSE("Name list count %d:\n", paramCount)
-
-    ppParamNameList = (char **)malloc(sizeof(char *) * paramCount);
-
-    if (ppParamNameList == NULL)
-    {
-        JSE_ERROR("Failed to allocate ppParamNameList!\n")
-        returnStatus = CCSP_ERR_MEMORY_ALLOC_FAIL;
-        goto EXIT0;
-    }
-
-    index = 0;
-
-    /* Iterate array and get the values */
-    duk_enum(ctx, pParamNameArray, 0);
-    while (duk_next(ctx, -1, 1 /* get val in addition to key */))
-    {
-        char *value = (char *)duk_get_string(ctx, -1); /*val at -1, key at -2*/ /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
-        if (value)
+        /*
+        *  Get Destination component for root obj name
+        */
+        returnStatus = UiDbusClientGetDestComponent(pRootObjName, &pDestComponentName, &pDestPath, subSystemPrefix);
+        if (returnStatus != 0)
         {
-            ppParamNameList[index] = value;
-            JSE_VERBOSE("  %s\n", ppParamNameList[index])
-            index++;
+            /* Does not return */
+                    JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                        "Failed on UiDbusClientGetDestComponent %s", pRootObjName);
         }
         else
         {
-            JSE_VERBOSE("  value is null\n")
+            JSE_DEBUG("DmExtGetStrsWithRootObj -- RootObjName: %s, destination component: %s, %s\n",
+                pRootObjName, pDestComponentName, pDestPath)
         }
-        duk_pop(ctx); /* pop key */
-        duk_pop(ctx); /* pop val */
-    }
-    duk_pop(ctx);
-    /* done with array */
 
-    returnStatus =
-        CcspBaseIf_getParameterValues(
-            bus_handle,
-            pDestComponentName,
-            pDestPath,
-            ppParamNameList,
-            paramCount,
-            &valCount, /* valCount could be larger than paramCount */
-            &ppParameterVal);
-
-    if (CCSP_SUCCESS != returnStatus)
-    {
-        JSE_ERROR("Failed on CcspBaseIf_getParameterValues, error code = %d.\n", returnStatus)
-        goto EXIT1;
-    }
-    else
-    {
         /*
-         * construct return value array: the first value is return status,
-         * the rest are sub arrays, array ( parameter name, value )
-         */
-        duk_idx_t arr_idx = duk_push_array(ctx);
-        duk_push_int(ctx, 0);
-        duk_put_prop_index(ctx, arr_idx, 0);
+        *  Construct parameter name array
+        */
+        paramCount = get_array_length(ctx, pParamNameArray);
 
-        JSE_VERBOSE("%d of returned values:\n", valCount)
+        JSE_VERBOSE("Name list count %d:\n", paramCount)
 
-        for (index = 0; index < valCount; index++)
+        ppParamNameList = (char **)calloc(paramCount, sizeof(char *));
+        if (ppParamNameList == NULL)
         {
-            duk_idx_t sub_idx;
-            JSE_VERBOSE("  %s = %s\n", ppParameterVal[index]->parameterName, ppParameterVal[index]->parameterValue)
-
-            sub_idx = duk_push_array(ctx);
-            duk_push_string(ctx, ppParameterVal[index]->parameterName);
-            duk_put_prop_index(ctx, sub_idx, 0);
-            duk_push_string(ctx, ppParameterVal[index]->parameterValue);
-            duk_put_prop_index(ctx, sub_idx, 1);
-            duk_put_prop_index(ctx, arr_idx, index + 1);
+            int _errno = errno;
+            /* Does not return */
+            JSE_THROW_POSIX_ERROR(ctx, _errno, "ppParamNameList: %s", strerror(_errno));
         }
 
-        if (valCount > 0)
+        index = 0;
+
+        /* Iterate array and get the values */
+        duk_enum(ctx, pParamNameArray, 0);
+        while (duk_next(ctx, -1, true /* get val in addition to key */))
         {
-            free_parameterValStruct_t(bus_handle, valCount, ppParameterVal);
+            /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
+            char *value = (char *)duk_get_string(ctx, -1); /*val at -1, key at -2*/
+            if (value)
+            {
+                ppParamNameList[index] = value;
+                JSE_VERBOSE("  %s", ppParamNameList[index])
+                index++;
+            }
+#ifdef JSE_DEBUG
+            else
+            {
+                if (duk_get_type(ctx, -2) == DUK_TYPE_NUMBER)
+                {
+                    unsigned int key = duk_get_uint(ctx, -2);
+                    JSE_VERBOSE("  Item %u is null!", key);
+                }
+                else if (duk_get_type(ctx, -2) == DUK_TYPE_STRING)
+                {
+                    const char * key = duk_get_string(ctx, -2);
+                    JSE_VERBOSE("  Item \'%s\' is null!", key);
+                }
+                else
+                {
+                    JSE_VERBOSE("  Item with unrecognised key is null!");
+                }
+            }
+#endif
+            duk_pop_2(ctx);
         }
+        duk_pop(ctx);
+        /* done with array */
 
-        returnStatus = 0;
+        returnStatus =
+            CcspBaseIf_getParameterValues(
+                bus_handle,
+                pDestComponentName,
+                pDestPath,
+                ppParamNameList,
+                paramCount,
+                &valCount, /* valCount could be larger than paramCount */
+                &ppParameterVal);
+
+        if (CCSP_SUCCESS != returnStatus)
+        {
+            free(ppParamNameList);
+            /* Does not return */
+            JSE_THROW_COSA_ERROR(ctx, returnStatus, "Failed on CcspBaseIf_getParameterValues");
+        }
+        else
+        {
+            /*
+            * construct return value array: the first value is return status,
+            * the rest are sub arrays, array ( parameter name, value )
+            */
+            duk_idx_t arr_idx = duk_push_array(ctx);
+            duk_push_int(ctx, 0);
+            duk_put_prop_index(ctx, arr_idx, 0);
+
+            JSE_VERBOSE("%d values returned:", valCount)
+
+            for (index = 0; index < valCount; index++)
+            {
+                duk_idx_t sub_idx;
+                JSE_VERBOSE("  %s = %s", ppParameterVal[index]->parameterName, ppParameterVal[index]->parameterValue)
+
+                sub_idx = duk_push_array(ctx);
+                duk_push_string(ctx, ppParameterVal[index]->parameterName);
+                duk_put_prop_index(ctx, sub_idx, 0);
+                duk_push_string(ctx, ppParameterVal[index]->parameterValue);
+                duk_put_prop_index(ctx, sub_idx, 1);
+                duk_put_prop_index(ctx, arr_idx, index + 1);
+            }
+
+            if (valCount > 0)
+            {
+                free_parameterValStruct_t(bus_handle, valCount, ppParameterVal);
+            }
+
+            free(ppParamNameList);
+
+            /* One item returned on the bottom of the stack, the value array */
+            ret = 1;
+        }
     }
 
-EXIT1:
-
-    if (ppParamNameList)
-    {
-        free(ppParamNameList);
-    }
-
-    if (returnStatus == 0) // success
-    {
-        return 1;
-    }
-
-EXIT0:
-
-    return duk_error(ctx, DUK_ERR_ERROR, "CCSP Error: %d", returnStatus); // never returns, throws exception
+    return ret;
 }
 
 /**
@@ -1066,6 +1079,8 @@ EXIT0:
  */
 static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
 {
+    duk_ret_t ret = DUK_RET_ERROR;
+
     char *pRootObjName;
     char subSystemPrefix[6] = {0};
     int returnStatus = 0;
@@ -1085,245 +1100,239 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
     JSE_ASSERT(ctx != NULL)
 
     /* Parse paremeters */
-    if (DUK_EXEC_SUCCESS != parse_parameter(__FUNCTION__, ctx, "sbo", &pRootObjName, &bCommit, &pParamArray))
+    if (parse_parameter(__FUNCTION__, ctx, "sbo", &pRootObjName, &bCommit, &pParamArray) != 0)
     {
         JSE_ERROR("Error parsing argument(s)!")
-        returnStatus = CCSP_FAILURE;
-        goto EXIT0;
-    }
-
-    bDbusCommit = (bCommit) ? 1 : 0;
-
-    // Check whether there is subsystem prefix in the dot string
-    // Split Subsytem prefix and COSA dotstr if subsystem prefix is found
-    CheckAndSetSubsystemPrefix(&pRootObjName, subSystemPrefix);
-
-    JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
-
-    /*
-     *  Get Destination component for root obj name
-     */
-    returnStatus = UiDbusClientGetDestComponent(pRootObjName, &pDestComponentName, &pDestPath, subSystemPrefix);
-
-    if (returnStatus != 0)
-    {
-        JSE_ERROR("Failed on UiDbusClientGetDestComponent %s, error code = %d", pRootObjName, returnStatus)
-        goto EXIT0;
     }
     else
     {
-        JSE_DEBUG(
-            "DmExtSetStrsWithRootObj -- RootObjName: %s, bCommit: %d, destination component: %s, %s\n",
-            pRootObjName,
-            bDbusCommit,
-            pDestComponentName,
-            pDestPath)
-    }
+        bDbusCommit = (bCommit) ? 1 : 0;
 
-    /*
-     *  Construct parameter value array
-     */
-    paramCount = get_array_length(ctx, pParamArray);
+        /* Check whether there is subsystem prefix in the dot string
+        Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
+        CheckAndSetSubsystemPrefix(&pRootObjName, subSystemPrefix);
 
-    JSE_VERBOSE("Parameter list count: %d", paramCount)
+        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
 
-    pParameterValList = (parameterValStruct_t *)malloc(sizeof(parameterValStruct_t) * paramCount);
-
-    if (pParameterValList == NULL)
-    {
-        JSE_ERROR("Failed to allocate pParameterValList!")
-        goto EXIT0;
-    }
-
-    index = 0;
-
-    /*
-     *  This is an array of arrays - process the first level
-     *  Second level array of each parameter value: parameter name, type and value
-     *  Therofore, the count has to be 3
-     *  Construct the parameter val struct list for CCSP Base API along the way
-     */
-    duk_enum(ctx, pParamArray, 0);
-    while (duk_next(ctx, -1, 1))
-    {
-        if (!duk_is_array(ctx, -1))
+        /*
+        *  Get Destination component for root obj name
+        */
+        returnStatus = UiDbusClientGetDestComponent(pRootObjName, &pDestComponentName, &pDestPath, subSystemPrefix);
+        if (returnStatus != 0)
         {
-            JSE_ERROR("Item is not ARRAY!")
-            (void)duk_type_error(ctx, "Item is not ARRAY!");
-        }
-        else if (get_array_length(ctx, -1) != 3)
-        {
-            JSE_ERROR("Subarray count is supposed to be 3, actual value = %d!!!", get_array_length(ctx, -1))
-            (void)duk_range_error(ctx, "Subarray count is supposed to be 3, actual value = %d!!!", get_array_length(ctx, -1));
+            /* Does not return */
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "Failed on UiDbusClientGetDestComponent %s, error code = %d", pRootObjName);
         }
         else
         {
-            duk_enum(ctx, -1, 0);
+            JSE_DEBUG(
+                "DmExtSetStrsWithRootObj -- RootObjName: %s, bCommit: %d, destination component: %s, %s\n",
+                pRootObjName,
+                bDbusCommit,
+                pDestComponentName,
+                pDestPath)
+        }
 
-            if (duk_next(ctx, -1, 1)) /* get the name */
+        /*
+        *  Construct parameter value array
+        */
+        paramCount = get_array_length(ctx, pParamArray);
+
+        JSE_VERBOSE("Parameter list count: %d", paramCount)
+
+        pParameterValList = (parameterValStruct_t *)calloc(paramCount, sizeof(parameterValStruct_t));
+        if (pParameterValList == NULL)
+        {
+            int _errno = errno;
+            /* Does not return */
+            JSE_THROW_POSIX_ERROR(ctx, _errno, "pParameterValList: %s", strerror(_errno));
+        }
+
+        index = 0;
+
+        /*
+        *  This is an array of arrays - process the first level
+        *  Second level array of each parameter value: parameter name, type and value
+        *  Therofore, the count has to be 3
+        *  Construct the parameter val struct list for CCSP Base API along the way
+        */
+        duk_enum(ctx, pParamArray, 0);
+        while (duk_next(ctx, -1, 1))
+        {
+            if (!duk_is_array(ctx, -1))
             {
-                pParameterValList[index].parameterName = (char *)duk_get_string(ctx, -1); /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
-                JSE_VERBOSE("  Param name %s", pParameterValList[index].parameterName)
-                /* pop name k/v */
-                duk_pop(ctx);
-                duk_pop(ctx);
+                free(pParameterValList);
+                /* Does not return */
+                JSE_THROW_TYPE_ERROR(ctx, "Item is not ARRAY!");
+            }
+            else if (get_array_length(ctx, -1) != 3)
+            {
+                free(pParameterValList);
+                /* Does not return */
+                JSE_THROW_RANGE_ERROR(ctx,
+                    "Subarray count is supposed to be 3, actual value = %d!!!", get_array_length(ctx, -1));
+            }
+            else
+            {
+                duk_enum(ctx, -1, 0);
 
-                if (duk_next(ctx, -1, 1)) /* get the type */
+                if (duk_next(ctx, -1, true)) /* get the name */
                 {
-                    char *pTemp = (char *)duk_get_string(ctx, -1); /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
+                    /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
+                    pParameterValList[index].parameterName = (char *)duk_get_string(ctx, -1);
+                    JSE_VERBOSE("  Param name %s", pParameterValList[index].parameterName)
+                    /* pop name k/v */
+                    duk_pop_2(ctx);
 
-                    if (!strcmp(pTemp, "void"))
+                    if (duk_next(ctx, -1, true)) /* get the type */
                     {
-                        pParameterValList[index].type = ccsp_none;
-                    }
-                    else if (!strcmp(pTemp, "string"))
-                    {
-                        pParameterValList[index].type = ccsp_string;
-                    }
-                    else if (!strcmp(pTemp, "int"))
-                    {
-                        pParameterValList[index].type = ccsp_int;
-                    }
-                    else if (!strcmp(pTemp, "uint"))
-                    {
-                        pParameterValList[index].type = ccsp_unsignedInt;
-                    }
-                    else if (!strcmp(pTemp, "bool"))
-                    {
-                        pParameterValList[index].type = ccsp_boolean;
-                    }
-                    else if (!strcmp(pTemp, "datetime"))
-                    {
-                        pParameterValList[index].type = ccsp_dateTime;
-                    }
-                    else if (!strcmp(pTemp, "base64"))
-                    {
-                        pParameterValList[index].type = ccsp_base64;
-                    }
-                    else if (!strcmp(pTemp, "long"))
-                    {
-                        pParameterValList[index].type = ccsp_long;
-                    }
-                    else if (!strcmp(pTemp, "unlong"))
-                    {
-                        pParameterValList[index].type = ccsp_unsignedLong;
-                    }
-                    else if (!strcmp(pTemp, "float"))
-                    {
-                        pParameterValList[index].type = ccsp_float;
-                    }
-                    else if (!strcmp(pTemp, "double"))
-                    {
-                        pParameterValList[index].type = ccsp_double;
-                    }
-                    else if (!strcmp(pTemp, "byte"))
-                    {
-                        pParameterValList[index].type = ccsp_byte;
-                    }
+                        /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
+                        char *pTemp = (char *)duk_get_string(ctx, -1);
 
-                    JSE_VERBOSE("  Param type %d->%s", pParameterValList[index].type, pTemp)
-                    /* pop type k/v */
-                    duk_pop(ctx);
-                    duk_pop(ctx);
-
-                    if (duk_next(ctx, -1, 1)) /* get the value */
-                    {
-                        pParameterValList[index].parameterValue = (char *)duk_get_string(ctx, -1); /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
-
-                        if (pParameterValList[index].type == ccsp_boolean)
+                        if (!strcmp(pTemp, "void"))
                         {
-                            /* support true/false or 1/0 for boolean value */
-                            if (!strcmp(pParameterValList[index].parameterValue, "1"))
-                            {
-                                strcpy(BoolStrBuf, "true");
-                                pParameterValList[index].parameterValue = BoolStrBuf;
-                            }
-                            else if (!strcmp(pParameterValList[index].parameterValue, "0"))
-                            {
-                                strcpy(BoolStrBuf, "false");
-                                pParameterValList[index].parameterValue = BoolStrBuf;
-                            }
+                            pParameterValList[index].type = ccsp_none;
                         }
-                        JSE_VERBOSE("  Param Value %s\n", pParameterValList[index].parameterValue)
-                        /* pop value k/v */
-                        duk_pop(ctx);
-                        duk_pop(ctx);
+                        else if (!strcmp(pTemp, "string"))
+                        {
+                            pParameterValList[index].type = ccsp_string;
+                        }
+                        else if (!strcmp(pTemp, "int"))
+                        {
+                            pParameterValList[index].type = ccsp_int;
+                        }
+                        else if (!strcmp(pTemp, "uint"))
+                        {
+                            pParameterValList[index].type = ccsp_unsignedInt;
+                        }
+                        else if (!strcmp(pTemp, "bool"))
+                        {
+                            pParameterValList[index].type = ccsp_boolean;
+                        }
+                        else if (!strcmp(pTemp, "datetime"))
+                        {
+                            pParameterValList[index].type = ccsp_dateTime;
+                        }
+                        else if (!strcmp(pTemp, "base64"))
+                        {
+                            pParameterValList[index].type = ccsp_base64;
+                        }
+                        else if (!strcmp(pTemp, "long"))
+                        {
+                            pParameterValList[index].type = ccsp_long;
+                        }
+                        else if (!strcmp(pTemp, "unlong"))
+                        {
+                            pParameterValList[index].type = ccsp_unsignedLong;
+                        }
+                        else if (!strcmp(pTemp, "float"))
+                        {
+                            pParameterValList[index].type = ccsp_float;
+                        }
+                        else if (!strcmp(pTemp, "double"))
+                        {
+                            pParameterValList[index].type = ccsp_double;
+                        }
+                        else if (!strcmp(pTemp, "byte"))
+                        {
+                            pParameterValList[index].type = ccsp_byte;
+                        }
+
+                        JSE_VERBOSE("  Param type %d->%s", pParameterValList[index].type, pTemp)
+                        /* pop type k/v */
+                        duk_pop_2(ctx);
+
+                        if (duk_next(ctx, -1, true)) /* get the value */
+                        {
+                            /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
+                            pParameterValList[index].parameterValue = (char *)duk_get_string(ctx, -1);
+
+                            if (pParameterValList[index].type == ccsp_boolean)
+                            {
+                                /* support true/false or 1/0 for boolean value */
+                                if (!strcmp(pParameterValList[index].parameterValue, "1"))
+                                {
+                                    strcpy(BoolStrBuf, "true");
+                                    pParameterValList[index].parameterValue = BoolStrBuf;
+                                }
+                                else if (!strcmp(pParameterValList[index].parameterValue, "0"))
+                                {
+                                    strcpy(BoolStrBuf, "false");
+                                    pParameterValList[index].parameterValue = BoolStrBuf;
+                                }
+                            }
+                            JSE_VERBOSE("  Param Value %s\n", pParameterValList[index].parameterValue)
+                            /* pop value k/v */
+                            duk_pop_2(ctx);
+                        }
+                        else
+                        {
+                            JSE_ERROR("Subarray invalid")
+                        }
                     }
                     else
                     {
-                        JSE_WARNING("Subarray invalid")
+                        JSE_ERROR("Subarray invalid")
                     }
                 }
                 else
                 {
-                    JSE_WARNING("Subarray invalid")
+                    JSE_ERROR("Subarray invalid")
                 }
+
+                index++;
+
+                /* pop sub array */
+                duk_pop(ctx);
             }
-            else
-            {
-                JSE_WARNING("Subarray invalid")
-            }
-
-            index++;
-
-            /* pop sub array */
-            duk_pop(ctx);
+            /* pop key and value from main array */
+            duk_pop_2(ctx);
         }
-        /* pop key and value from main array */
+        /* pop main array */
         duk_pop(ctx);
-        duk_pop(ctx);
-    }
-    /* pop main array */
-    duk_pop(ctx);
 
-    returnStatus =
-        CcspBaseIf_setParameterValues(
-            bus_handle,
-            pDestComponentName,
-            pDestPath,
-            0,
-            CCSP_COMPONENT_ID_WebUI,
-            pParameterValList,
-            index, /* use the actual count, instead of paramCount */
-            bDbusCommit,
-            &pFaultParamName);
+        returnStatus =
+            CcspBaseIf_setParameterValues(
+                bus_handle,
+                pDestComponentName,
+                pDestPath,
+                0,
+                CCSP_COMPONENT_ID_WebUI,
+                pParameterValList,
+                index, /* use the actual count, instead of paramCount */
+                bDbusCommit,
+                &pFaultParamName);
 
-    if (CCSP_SUCCESS != returnStatus)
-    {
-        JSE_ERROR(
-            "CcspBaseIf_setParameterValues failed, bCommit:%d, error code = %d, fault parameter = %s",
-            bDbusCommit,
-            returnStatus,
-            pFaultParamName ? pFaultParamName : "none")
-
-        if (pFaultParamName)
-        {
-            free(pFaultParamName);
-        }
-
-        goto EXIT1;
-    }
-    else
-    {
-        JSE_DEBUG("CcspBaseIf_setParameterValues succeeded!\n")
-        returnStatus = 0;
-    }
-
-EXIT1:
-
-    if (pParameterValList)
-    {
         free(pParameterValList);
+
+        if (CCSP_SUCCESS != returnStatus)
+        {
+            /* Temporary buffer on the stack which will get cleaned up on throw */
+            char faultParamName[256];
+
+            strncpy(faultParamName, pFaultParamName ? pFaultParamName : "none", sizeof(faultParamName) - 1);
+            faultParamName[sizeof(faultParamName) - 1] = '\0';
+
+            /* Per C99 free(NULL) is a NOP */
+            free(pFaultParamName);
+
+            /* Does not return */
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "CcspBaseIf_setParameterValues failed, bDbusCommit:%d, pFaultParamName: %s",
+                bDbusCommit,
+                faultParamName);
+        }
+        else
+        {
+            JSE_DEBUG("CcspBaseIf_setParameterValues succeeded!\n")
+
+            /* Return nothing (undefined) */
+            ret = 0;
+        }
     }
 
-    if (returnStatus == 0) // success
-    {
-        return 1;
-    }
-
-EXIT0:
-
-    return duk_error(ctx, DUK_ERR_ERROR, "CCSP Error: %d", returnStatus); // never returns, throws exception
+    return ret;
 }
 
 /**
@@ -1339,6 +1348,8 @@ EXIT0:
  */
 static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
 {
+    duk_ret_t ret = DUK_RET_ERROR;
+
     char *dotstr = NULL;
     char subSystemPrefix[6] = {0};
     char *ppDestComponentName = NULL;
@@ -1350,85 +1361,79 @@ static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
 
     JSE_ASSERT(ctx != NULL)
 
-    if (DUK_EXEC_SUCCESS != parse_parameter(__FUNCTION__, ctx, "s", &dotstr))
+    if (parse_parameter(__FUNCTION__, ctx, "s", &dotstr) != 0)
     {
         JSE_ERROR("Error parsing argument(s)!")
-        returnStatus = CCSP_FAILURE;
-        goto EXIT0;
-    }
-
-    // Check whether there are subsystem prefix in the dot string
-    // Split Subsytem prefix and COSA dotstr if subsystem prefix is found
-    CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
-
-    JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
-
-    // Get Destination component
-    returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
-
-    if (returnStatus != 0)
-    {
-        JSE_ERROR("Failed on UiDbusClientGetDestComponent %s, error code = %d", dotstr, returnStatus)
-        goto EXIT0;
     }
     else
     {
-        JSE_DEBUG("DmExtGetInstanceIds -- ObjectTable: %s, destination component: %s, %s", dotstr, ppDestComponentName, ppDestPath)
-    }
+        /* Check whether there are subsystem prefix in the dot string
+           Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
+        CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
-    /*
-     *  Get Next Instance Numbers
-     */
-    returnStatus =
-        CcspBaseIf_GetNextLevelInstances(
-            bus_handle,
-            ppDestComponentName,
-            ppDestPath,
-            dotstr,
-            &InstNum,
-            &pInstNumList);
+        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
 
-    if (returnStatus != CCSP_SUCCESS)
-    {
-        JSE_ERROR("Failed on CcspBaseIf_GetNextLevelInstances, error code = %d", returnStatus)
-        goto EXIT1;
-    }
-    else
-    {
-        char StrBuf[24];
-
-        duk_idx_t arr_idx = duk_push_array(ctx);
-        duk_push_int(ctx, 0);
-        duk_put_prop_index(ctx, arr_idx, 0);
-
-        JSE_VERBOSE("%d of returned values:", InstNum)
-
-        for (index = 0; index < InstNum; index++)
+        // Get Destination component
+        returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
+        if (returnStatus != 0)
         {
-            snprintf(StrBuf, sizeof(StrBuf) - 1, "%d", pInstNumList[index]);
-            duk_push_string(ctx, StrBuf);
-            duk_put_prop_index(ctx, arr_idx, index + 1);
-            JSE_VERBOSE("Instance %d: %s", index, StrBuf)
+            /* Does not return */
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "Failed on UiDbusClientGetDestComponent %s", dotstr);
+        }
+        else
+        {
+            JSE_DEBUG("DmExtGetInstanceIds -- ObjectTable: %s, destination component: %s, %s",
+                dotstr, ppDestComponentName, ppDestPath)
         }
 
-        if (pInstNumList)
+        /*
+        *  Get Next Instance Numbers
+        */
+        returnStatus =
+            CcspBaseIf_GetNextLevelInstances(
+                bus_handle,
+                ppDestComponentName,
+                ppDestPath,
+                dotstr,
+                &InstNum,
+                &pInstNumList);
+
+        if (returnStatus != CCSP_SUCCESS)
         {
+            /* Per C99 free(NULL) is a NOP */
             free(pInstNumList);
+
+            /* Does not return */
+            JSE_THROW_COSA_ERROR(ctx, returnStatus, "Failed on CcspBaseIf_GetNextLevelInstances");
         }
+        else
+        {
+            char StrBuf[24];
 
-        returnStatus = 0;
+            duk_idx_t arr_idx = duk_push_array(ctx);
+            duk_push_int(ctx, 0);
+            duk_put_prop_index(ctx, arr_idx, 0);
+
+            JSE_VERBOSE("%d of returned values:", InstNum)
+
+            for (index = 0; index < InstNum; index++)
+            {
+                snprintf(StrBuf, sizeof(StrBuf), "%d", pInstNumList[index]);
+                duk_push_string(ctx, StrBuf);
+                duk_put_prop_index(ctx, arr_idx, index + 1);
+                JSE_VERBOSE("Instance %d: %s", index, StrBuf)
+            }
+
+            /* Per C99 free(NULL) is a NOP */
+            free(pInstNumList);
+
+            /* One item returned on the bottom of the stack, the value array */
+            ret = 1;
+        }
     }
 
-EXIT1:
-
-    if (returnStatus == 0) // success
-    {
-        return 1;
-    }
-
-EXIT0:
-
-    return duk_error(ctx, DUK_ERR_ERROR, "CCSP Error: %d", returnStatus); // never returns, throws exception
+    return ret;
 }
 
 /* Duktape/C function bind list */
@@ -1458,10 +1463,11 @@ duk_int_t jse_bind_cosa(jse_context_t* jse_ctx)
     if (jse_ctx != NULL)
     {
         /* jse_cosa is dependent upon cosa error objects so bind here */
-        if (jse_bind_cosa_error(jse_ctx->ctx) == 0)
+        if (jse_bind_cosa_error(jse_ctx) != 0)
+        {
             JSE_ERROR("Failed to bind Cosa error objects")
-        } 
-        else 
+        }
+        else
         {
             duk_push_object(jse_ctx->ctx);
             duk_put_function_list(jse_ctx->ctx, -1, ccsp_cosa_funcs);
