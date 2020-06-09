@@ -31,6 +31,7 @@
 #include <duktape.h>
 
 #include "jse_debug.h"
+#include "jse_cosa_error.h"
 #include "jse_cosa.h"
 
 #define COMPONENT_NAME "ccsp.phpextension"
@@ -1452,13 +1453,22 @@ duk_int_t jse_bind_cosa(jse_context_t* jse_ctx)
 {
     duk_int_t ret = DUK_ERR_ERROR;
 
+    JSE_VERBOSE("Binding Cosa!")
+
     if (jse_ctx != NULL)
     {
-        duk_push_object(jse_ctx->ctx);
-        duk_put_function_list(jse_ctx->ctx, -1, ccsp_cosa_funcs);
-        duk_put_global_string(jse_ctx->ctx, "Cosa");
+        /* jse_cosa is dependent upon cosa error objects so bind here */
+        if (jse_bind_cosa_error(jse_ctx->ctx) == 0)
+            JSE_ERROR("Failed to bind Cosa error objects")
+        } 
+        else 
+        {
+            duk_push_object(jse_ctx->ctx);
+            duk_put_function_list(jse_ctx->ctx, -1, ccsp_cosa_funcs);
+            duk_put_global_string(jse_ctx->ctx, "Cosa");
 
-        ret = 0;
+            ret = 0;
+        }
     }
 
     JSE_VERBOSE("ret=%d", ret)
