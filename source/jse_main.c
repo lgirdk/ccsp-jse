@@ -1187,19 +1187,21 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
 static void help(const char* name)
 {
     fprintf(stderr,
-"Usage: %s [OPTION]... [FILENAME]\n" \
-"Run a JavaScript script as a CGI request.\n" \
-"\n" \
-"Mandatory arguments to long options are mandatory for short options too.\n" \
-"  -c, --cookies            Handle cookie requests.\n" \
-"  -g, --get                Handle GET requests.\n" \
-"  -h, --help               Display this help.\n" \
-"  -p, --post               Handle POST requests.\n" \
-"  -v, --verbose            Verbosity. Multiple uses increases vebosity.\n" \
-"  -n, --no-ccsp            Do not initialise CCSP.\n" \
-"\n" \
-"Exit status:\n" \
-" 0  if OK,\n" \
+"Usage: %s [OPTION]... [FILENAME]\n"
+"Run a JavaScript script as a CGI request.\n"
+"\n"
+"Mandatory arguments to long options are mandatory for short options too.\n"
+"  -c, --cookies            Handle cookie requests.\n"
+"  -g, --get                Handle GET requests.\n"
+"  -h, --help               Display this help.\n"
+"  -p, --post               Handle POST requests.\n"
+"  -v, --verbose            Verbosity. Multiple uses increases vebosity.\n"
+#ifdef BUILD_RDK
+"  -n, --no-ccsp            Do not initialise CCSP.\n"
+#endif
+"\n"
+"Exit status:\n"
+" 0  if OK,\n"
 " 1  if an ERROR,\n"
 " 2  if a FATAL error.\n", name);
 }
@@ -1230,7 +1232,9 @@ int main(int argc, char **argv)
             {"help",     no_argument,       0, 'h' },
             {"post",     no_argument,       0, 'p' },
             {"verbose",  no_argument,       0, 'v' },
+#ifdef BUILD_RDK
             {"no-ccsp",  no_argument,       0, 'n' },
+#endif
             {0,          0,                 0,  0  }
         };
 
@@ -1265,10 +1269,12 @@ int main(int argc, char **argv)
                 jse_verbosity ++;
                 break;
 
+#ifdef BUILD_RDK
             case 'n':
                 JSE_DEBUG("CCSP init disabled")
                 init_ccsp = false;
                 break;
+#endif
 
             default:
                 JSE_ERROR("Invalid option")
@@ -1339,6 +1345,7 @@ int main(int argc, char **argv)
         }
     }
 
+#ifdef BUILD_RDK
     /* Initialise cosa before the main loop */
     if (init_ccsp)
     {
@@ -1349,6 +1356,7 @@ int main(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
     }
+#endif
 	
     JSE_VERBOSE("main loop...")
 
