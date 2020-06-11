@@ -14,7 +14,7 @@
  * @param filename the script filename.
  * @return the context or NULL on error.
  */
-jse_context_t *jse_context_create(char *filename)
+jse_context_t *jse_context_create(char* filename)
 {
     jse_context_t *jse_ctx = (jse_context_t*)calloc(sizeof(jse_context_t), 1);
     if (jse_ctx != NULL)
@@ -48,6 +48,100 @@ void jse_context_destroy(jse_context_t *jse_ctx)
 }
 
 /**
+ * Read from a file descriptor in to a string buffer resizing if needed.
+ *
+ * This function reads from fd updating the buffer pointed to by pbuffer.
+ * The data is stored at the offset pointed to by poff. The size of the
+ * buffer is in the size pointed to by psize. The string is nul character
+ * terminated.
+ *
+ * If the buffer is resized the values pointed to by pstr, poff and psize
+ * will be updated.
+ *
+ * If the read fails the buffer is freed and the values of pbuffer, poff and
+ * psize will be set to NULL and 0 as appropriate.
+ *
+ * @param fd the file descriptor to read.
+ * @param pbuffer a pointer to the buffer.
+ * @param poff a pointer to the buffer offset.
+ * @param psize a pointer to the total buffer size.
+ *
+ * @return the bytes read, 0 on end of file, or -1 on error.
+ */
+ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size_t * const psize)
+{
+    ssize_t bytes = -1;
+    char * buffer = *pbuffer;
+    size_t size = *psize;
+    off_t off = *poff;
+
+    TEMP_FAILURE_RETRY(bytes = read(fd, buffer + off, size - off));
+    if (bytes == -1)
+    {
+        JSE_ERROR("read() failed: %s", strerror(errno))
+
+        free(buffer);
+        buffer = NULL;
+        off = 0;
+        size = 0;
+    }
+    else
+    {
+        if (bytes > 0)
+        {
+            /* More data */
+            off += bytes;
+
+            /* Do we need to resize the string */
+            if (off == (ssize_t)size)
+            {
+                size *= 2;
+
+                buffer = (char*)realloc(buffer, size);
+                if (buffer == NULL)
+                {
+                    JSE_ERROR("realloc() failed: %s", strerror(errno));
+                    bytes = -1;
+                    off = 0;
+                    size = 0;
+                }
+            }
+        }
+        else
+        {
+            char * newbuf = NULL;
+
+            /* For nul terminator */
+            size = off + 1;
+
+            /* Resize the string for the contents to fit. */
+            newbuf = (char*)realloc(buffer, size);
+            if (newbuf == NULL)
+            {
+                JSE_ERROR("realloc() failed: %s", strerror(errno));
+                bytes = -1;
+                off = 0;
+                size = 0;
+            }
+            else
+            {
+                buffer = newbuf;
+
+                /* nul character to terminate string, will be
+                   overwritten next pass. */
+                *(buffer + off) = '\0';
+            }
+        }
+    }
+
+    *pbuffer = buffer;
+    *poff = off;
+    *psize = size;
+
+    return bytes;
+}
+
+/**
  * Read from a file descriptor.
  *
  * This function reads an unknown number of bytes from a file descriptor.
@@ -58,89 +152,40 @@ void jse_context_destroy(jse_context_t *jse_ctx)
  * @param pbuffer a pointer to return the buffer.
  * @param psize a pointer to return the size.
  *
- * @return the file size or 0 on error.
+ * @return the file size or -1 on error.
  */
-size_t jse_read_fd(int fd, char **pbuffer, size_t *psize)
+ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize)
 {
-    size_t buffer_size = 4096;
-    char * buffer = (char*)malloc(buffer_size);
-    size_t size = 0;
-    ssize_t bytes = 0;
+    /* Initial buffer size */
+    size_t size = 4096;
+    char * buffer = (char*)malloc(size);
+    off_t off = 0;
+    ssize_t bytes = -1;
 
     if (buffer == NULL)
     {
-        goto error;
+        JSE_ERROR("malloc() failed: %s", strerror(errno))
     }
-
-    do
+    else
     {
-        /* Size is size of contents */
-        TEMP_FAILURE_RETRY(bytes = read(fd, buffer + size, buffer_size - size));
+        do
+        {
+            bytes = jse_read_fd_once(fd, &buffer, &off, &size);
+        }
+        while (bytes > 0);
+
         if (bytes == -1)
         {
-            JSE_ERROR("read() failed: %s", strerror(errno))
-            goto error;
+            JSE_ERROR("jse_read_fd_once(0 failed: %s", strerror(errno))
         }
-
-        if (bytes > 0)
+        else
         {
-            size += bytes;
-
-            /* Do we need to resize the buffer */
-            if (size + bytes == buffer_size)
-            {
-                /* Can't expand it any more. */
-                if (buffer_size == JSE_MAX_FILE_SIZE)
-                {
-                    JSE_ERROR("File too large!")
-                    goto error;
-                }
-
-                buffer_size *= 2;
-
-                if (buffer_size > JSE_MAX_FILE_SIZE)
-                {
-                    buffer_size = JSE_MAX_FILE_SIZE;
-                }
-
-                buffer = realloc(buffer, buffer_size);
-                if (buffer == NULL)
-                {
-                    JSE_ERROR("realloc() failed: %s", strerror(errno))
-                    goto error;
-                }
-            }
+            *pbuffer = buffer;
+            *psize = size;
         }
     }
-    while (bytes > 0);
 
-    /* trim off excess memory. */
-    buffer = realloc(buffer, size + sizeof('\0'));
-    if (buffer == NULL)
-    {
-        JSE_ERROR("realloc() failed: %s", strerror(errno))
-        goto error;
-    }
-
-    *(buffer + size) = '\0';
-
-    *pbuffer = buffer;
-    *psize = size;
-
-    return size;
-
-error:
-    if (fd != -1)
-    {
-        close(fd);
-    }
-
-    if (buffer != NULL)
-    {
-        free(buffer);
-    }
-
-    return 0;
+    return bytes;
 }
 
 /**
@@ -155,9 +200,9 @@ error:
  * @param pbuffer a pointer to return the buffer.
  * @param psize a pointer to return the size.
  *
- * @return the file size or 0 on error.
+ * @return the file size or -1 on error.
  */
-size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize)
+ssize_t jse_read_file(const char * const filename, char ** const pbuffer, size_t * const psize)
 {
     char * buffer = NULL;
     off_t offset = 0;
@@ -186,14 +231,13 @@ size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize)
         JSE_WARNING("%s: %s", filename, strerror(errno))
 
         /* Lets try falling back to the iterative method. */
-        if (jse_read_fd(fd, &buffer, &size) == 0)
+        if (jse_read_fd(fd, &buffer, &size) == -1)
         {
-            /* That didn't work either */
+            JSE_ERROR("jse_read_fd() failed: %s", strerror(errno));
             goto error;
         }
         else
         {
-            close(fd);
             goto done;
         }
     }
@@ -259,7 +303,7 @@ error:
     }
 
 error2:
-    return 0;
+    return -1;
 }
 
 

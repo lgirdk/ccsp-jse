@@ -19,9 +19,9 @@ extern "C" {
 
 /* Context for processing the request. Used by the fatal error handler */
 struct jse_context_s {
-    char *filename;
-    duk_context *ctx;
-    qentry_t *req;
+    char * filename;
+    duk_context * ctx;
+    qentry_t * req;
 };
 
 typedef struct jse_context_s jse_context_t;
@@ -32,7 +32,7 @@ typedef struct jse_context_s jse_context_t;
  * @param filename the script filename.
  * @return the context or NULL on error.
  */
-jse_context_t *jse_context_create(char *filename);
+jse_context_t *jse_context_create(char * filename);
 
 /**
  * Destroy a JSE context.
@@ -40,6 +40,28 @@ jse_context_t *jse_context_create(char *filename);
  * @param jse_ctx the jse context.
  */
 void jse_context_destroy(jse_context_t *jse_ctx);
+
+/**
+ * A single read from a file descriptor in to a buffer resizing if needed.
+ *
+ * This function reads from fd updating the buffer pointed to by pbuffer.
+ * The data is stored at the offset pointed to by poff. The size of the
+ * buffer is in the size pointed to by psize.
+ *
+ * If the buffer is resized the values pointed to by pstr, poff and psize
+ * will be updated.
+ *
+ * If the read fails the buffer is freed and the values of pstr, poff and
+ * psize will be set to NULL and 0 as appropriate.
+ *
+ * @param fd the file descriptor to read.
+ * @param pbuffer a pointer to the buffer.
+ * @param poff a pointer to the buffer offset.
+ * @param psize a pointer to the total buffer size.
+ * 
+ * @return the bytes read or -1 on error.
+ */
+ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size_t * const psize);
 
 /**
  * Read from a file descriptor.
@@ -52,9 +74,9 @@ void jse_context_destroy(jse_context_t *jse_ctx);
  * @param pbuffer a pointer to return the buffer.
  * @param psize a pointer to return the size.
  *
- * @return the file size or 0 on error.
+ * @return the file size or -1 on error.
  */
-size_t jse_read_fd(int fd, char **pbuffer, size_t *psize);
+ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize);
 
 /**
  * Reads a file in to a buffer.
@@ -68,9 +90,9 @@ size_t jse_read_fd(int fd, char **pbuffer, size_t *psize);
  * @param pbuffer a pointer to return the buffer.
  * @param psize a pointer to return the size.
  *
- * @return the file size or 0 on error.
+ * @return the file size or -1 on error.
  */
-size_t jse_read_file(const char *filename, char **pbuffer, size_t *psize);
+ssize_t jse_read_file(const char * const filename, char ** const pbuffer, size_t * const psize);
 
 #if defined(__cplusplus)
 }

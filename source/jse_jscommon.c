@@ -102,6 +102,7 @@ static duk_ret_t do_include(duk_context * ctx)
     const char * filename = NULL;
     char * buffer = NULL;
     size_t size = 0;
+    ssize_t bytes = 0;
 
     JSE_ASSERT(ctx != NULL)
 
@@ -136,8 +137,8 @@ static duk_ret_t do_include(duk_context * ctx)
             }
             else
             {
-                size = jse_read_file(filename, &buffer, &size);
-                if (size == 0)
+                bytes = jse_read_file(filename, &buffer, &size);
+                if (bytes == -1)
                 {
                     JSE_ERROR("Including %s failed", filename)
                 }
@@ -259,6 +260,7 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
     const char * filename = NULL;
     char * buffer = NULL;
     size_t size = 0;
+    ssize_t bytes = 0;
 
     JSE_VERBOSE("do_read_file_as_string()")
 
@@ -293,8 +295,8 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
             }
             else
             {
-                size = jse_read_file(filename, &buffer, &size);
-                if (size == 0)
+                bytes = jse_read_file(filename, &buffer, &size);
+                if (bytes == -1)
                 {
                     JSE_ERROR("Failed to read: %s", filename)
                 }
@@ -302,6 +304,8 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
                 {
                     JSE_ASSERT(buffer != NULL)
                     JSE_ASSERT(size != 0)
+
+                    JSE_VERBOSE("buffer=%p, size=%d", buffer, size)
 
                     duk_push_lstring(ctx, buffer, (duk_size_t)size);
                     free(buffer);

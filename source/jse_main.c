@@ -507,15 +507,17 @@ static duk_int_t run_stdin(jse_context_t *jse_ctx)
  * @param jse_ctx the jse context.
  * @return an error status or 0.
  */
-static duk_int_t run_file(jse_context_t *jse_ctx)
+static duk_int_t run_file(jse_context_t * jse_ctx)
 {
     duk_int_t ret = DUK_ERR_ERROR;
     char *buffer = NULL;
     size_t size = 0;
+    ssize_t bytes = 0;
 
     JSE_VERBOSE("run_file()")
 
-    if (jse_read_file(jse_ctx->filename, &buffer, &size) > 0)
+    bytes = jse_read_file(jse_ctx->filename, &buffer, &size);
+    if (bytes > 0)
     {
         if (jse_run_buffer(jse_ctx, buffer, size) == DUK_EXEC_SUCCESS)
         {
