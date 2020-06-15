@@ -72,6 +72,7 @@ set(JSE_SOURCES
   source/jse_common.c
   source/jse_jscommon.c
   source/jse_jserror.c
+  source/jse_jsprocess.c
   source/jse_main.c)
 
 set(JSE_LIBS "-lqdecoder -lduktape -lm")

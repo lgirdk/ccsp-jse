@@ -20,6 +20,7 @@
 #include "jse_common.h"
 #include "jse_jscommon.h"
 #include "jse_jserror.h"
+#include "jse_jsprocess.h"
 
 #include "jse_xml.h"
 #include "jse_cosa.h"
@@ -939,6 +940,10 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
     if ((ret = jse_bind_jscommon(jse_ctx)) != 0)
     {
         JSE_ERROR("Failed to bind jscommon functions!")
+    }
+    else if ((ret = jse_bind_jsprocess(jse_ctx)) != 0)
+    {
+        JSE_ERROR("Failed to bind jsprocess functions!")
     }
 #ifdef ENABLE_LIBXML2
     else if ((ret = jse_bind_xml(jse_ctx)) != 0)
