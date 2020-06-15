@@ -1242,8 +1242,10 @@ int main(int argc, char **argv)
     char * arg = NULL;
     duk_int_t ret = DUK_ERR_ERROR;
     
+#ifdef BUILD_RDK
     /* By default we initialise CCSP unless turned off on the command line */
     bool init_ccsp = true;
+#endif
 
     JSE_DEBUG_INIT()
     JSE_VERBOSE("main()")
@@ -1361,11 +1363,13 @@ int main(int argc, char **argv)
             {
                 jse_verbosity ++;
             }
+#ifdef BUILD_RDK
             else
             if (!strcmp("-n", arg) || !strcmp("--no-ccsp", arg))
             {
                 init_ccsp = false;
             }
+#endif
 
             arg = strtok(NULL, " ");
         }
