@@ -82,7 +82,7 @@ static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent)
 
     /* Get the value. After duk_next() the stack has the enumerator at -3,
        the key at -2 and the value at -1 */
-    while (duk_next(ctx, obj_idx, true))
+    while (duk_next(ctx, -1, true))
     {
         child_to_xml(ctx, parent, duk_safe_to_string(ctx, -2));
 
