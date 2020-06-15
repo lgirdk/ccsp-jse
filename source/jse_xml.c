@@ -3,15 +3,55 @@
 #include "jse_debug.h"
 #include "jse_xml.h"
 
+static void iterate_array(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent, const char* name);
+static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent);
+
+/**
+ * Generates the XML for a child, handling an array or object appropriately
+ *
+ * This function generates the XML for a child on the bottom of the stack.
+ * If the child is an array it will iterate the array. If the child is an
+ * object, it will walk the object. Otherwise it will set the value of the
+ * node to be the value of the child.
+ *
+ * @param ctx the duktape context.
+ * @param parent the parent node.
+ * @param name the name to use for the child node.
+ */
+static void child_to_xml(duk_context * ctx, xmlNodePtr parent, const char* name)
+{
+    if (duk_is_array(ctx, -1))
+    {
+        iterate_array(ctx, -1, parent, duk_safe_to_string(ctx, -2));
+    }
+    else
+    {
+        xmlNodePtr child = xmlNewChild(
+            parent, NULL, BAD_CAST name, NULL);
+        if (child != NULL)
+        {
+            if (duk_is_object(ctx, -1))
+            {
+                /* Recurse in to object */
+                walk_object(ctx, -1, child);
+            }
+            else
+            {
+                xmlNodeSetContent(child, BAD_CAST duk_safe_to_string(ctx, -1));
+            }
+        }
+    }
+}
+
 /**
  * Iterates over an array added nodes for each element.
  *
  * @param ctx the duktape context.
- * @param obj_idx the index of the object walk.
- * @param node the root node.
+ * @param obj_idx the index of the array to iterate.
+ * @param parent the parent node.
  * @param name the name to use for the child nodes.
  */
-static void iterate_array(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr node, const char* name)
+static void iterate_array(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent, const char* name)
 {
     duk_size_t len = 0;
     duk_size_t idx = 0;
@@ -19,13 +59,9 @@ static void iterate_array(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr node,
     len = duk_get_length(ctx, obj_idx);
     for (idx = 0; idx < len; idx ++)
     {
-        xmlNodePtr child = xmlNewChild(node, NULL, BAD_CAST name, NULL);
-        if (child != NULL)
-        {
-            duk_get_prop_index(ctx, obj_idx, idx);
-            xmlNodeSetContent(child, BAD_CAST duk_safe_to_string(ctx, -1));
-            duk_pop(ctx);
-        }
+        duk_get_prop_index(ctx, obj_idx, idx);
+        child_to_xml(ctx, parent, name);
+        duk_pop(ctx);
     }
 }
 
@@ -33,10 +69,10 @@ static void iterate_array(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr node,
  * Recursively walk over a JavaScript object making an XML tree.
  *
  * @param ctx the duktape context.
- * @param obj_idx the index of the object walk.
- * @param node the root node.
+ * @param obj_idx the index of the object to walk.
+ * @param parent the parent node.
  */
-static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr node)
+static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent)
 {
     /* Pushes an enumerator on to the stack */
     duk_enum(ctx, obj_idx, 0);
@@ -45,27 +81,7 @@ static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr node)
        the key at -2 and the value at -1 */
     while (duk_next(ctx, obj_idx, true))
     {
-        if (duk_is_array(ctx, -1))
-        {
-            iterate_array(ctx, -1, node, duk_safe_to_string(ctx, -2));
-        }
-        else
-        {
-            xmlNodePtr child = xmlNewChild(
-                node, NULL, BAD_CAST duk_safe_to_string(ctx, -2), NULL);
-            if (child != NULL)
-            {
-                if (duk_is_object(ctx, -1))
-                {
-                    /* Recurse in to object */
-                    walk_object(ctx, -1, child);
-                }
-                else
-                {
-                    xmlNodeSetContent(child, BAD_CAST duk_safe_to_string(ctx, -1));
-                }
-            }
-        }
+        child_to_xml(ctx, parent, duk_safe_to_string(ctx, -2));
 
         /* Pop the key and the value */
         duk_pop_2(ctx);
