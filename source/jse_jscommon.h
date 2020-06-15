@@ -26,6 +26,13 @@ duk_ret_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size
  */
 duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx);
 
+/**
+ * Unbinds the JavaScript extensions.
+ *
+ * @param jse_ctx the jse context.
+ */
+void jse_unbind_jscommon(jse_context_t * jse_ctx);
+
 #if defined(__cplusplus)
 }
 #endif

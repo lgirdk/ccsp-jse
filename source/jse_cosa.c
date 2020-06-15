@@ -35,6 +35,9 @@
 #include "jse_cosa_error.h"
 #include "jse_cosa.h"
 
+/** Reference count for binding. */
+static int ref_count = 0;
+
 #define COMPONENT_NAME "ccsp.phpextension"
 #define CONF_FILENAME "/tmp/ccsp_msg.cfg"
 #define CCSP_COMPONENT_ID_WebUI 0x00000001
@@ -1460,6 +1463,7 @@ duk_int_t jse_bind_cosa(jse_context_t* jse_ctx)
 
     JSE_VERBOSE("Binding Cosa!")
 
+    JSE_VERBOSE("ref_count=%d", ref_count)
     if (jse_ctx != NULL)
     {
         /* jse_cosa is dependent upon cosa error objects so bind here */
@@ -1469,14 +1473,38 @@ duk_int_t jse_bind_cosa(jse_context_t* jse_ctx)
         }
         else
         {
-            duk_push_object(jse_ctx->ctx);
-            duk_put_function_list(jse_ctx->ctx, -1, ccsp_cosa_funcs);
-            duk_put_global_string(jse_ctx->ctx, "Cosa");
+            if (ref_count == 0)
+            {
+                duk_push_object(jse_ctx->ctx);
+                duk_put_function_list(jse_ctx->ctx, -1, ccsp_cosa_funcs);
+                duk_put_global_string(jse_ctx->ctx, "Cosa");
+            }
 
+            ref_count ++;
             ret = 0;
         }
     }
 
     JSE_VERBOSE("ret=%d", ret)
     return ret;
+}
+
+/**
+ * Unbinds the JavaScript extensions.
+ *
+ * Actually just decrements the reference count. Needed for fast cgi
+ * since the same process will rebind. Not unbinding is not an issue
+ * as the duktape context is destroyed each time cleaning everything
+ * up.
+ *
+ * @param jse_ctx the jse context.
+ */
+void jse_unbind_cosa(jse_context_t * jse_ctx)
+{
+    ref_count --;
+    JSE_VERBOSE("ref_count=%d", ref_count)
+
+    /* TODO: Actually unbind */
+
+    jse_unbind_cosa_error(jse_ctx);
 }

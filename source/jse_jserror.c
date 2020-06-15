@@ -3,6 +3,9 @@
 #include "jse_debug.h"
 #include "jse_jserror.h"
 
+/** Reference count for binding. */
+static int ref_count = 0;
+
 /**
  * The PosixError.toString() function binding.
  *
@@ -274,17 +277,43 @@ duk_int_t jse_bind_jserror(jse_context_t * jse_ctx)
 
     JSE_VERBOSE("Binding JS errors!")
 
+    JSE_VERBOSE("ref_count=%d", ref_count)
     if (jse_ctx != NULL)
     {
-        duk_push_c_function(jse_ctx->ctx, do_new_posix_error, 2);
-        duk_put_global_string(jse_ctx->ctx, "PosixError");
+        if (ref_count == 0)
+        {
+            duk_push_c_function(jse_ctx->ctx, do_new_posix_error, 2);
+            duk_put_global_string(jse_ctx->ctx, "PosixError");
 
-        duk_push_c_function(jse_ctx->ctx, do_throw_posix_error, 2);
-        duk_put_global_string(jse_ctx->ctx, "throwPosixError");
+            duk_push_c_function(jse_ctx->ctx, do_throw_posix_error, 2);
+            duk_put_global_string(jse_ctx->ctx, "throwPosixError");
+        }
 
+        ref_count ++;
         ret = 0;
     }
 
     JSE_VERBOSE("ret=%d", ret)
     return ret;
+}
+
+/**
+ * Unbinds the JavaScript extensions.
+ *
+ * Actually just decrements the reference count. Needed for fast cgi
+ * since the same process will rebind. Not unbinding is not an issue
+ * as the duktape context is destroyed each time cleaning everything
+ * up.
+ *
+ * @param jse_ctx the jse context.
+ */
+void jse_unbind_jserror(jse_context_t * jse_ctx)
+{
+    /* Stop unused warning */
+    jse_ctx = jse_ctx;
+
+    ref_count --;
+    JSE_VERBOSE("ref_count=%d", ref_count)
+
+    /* TODO: Actually unbind */
 }

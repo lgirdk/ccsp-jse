@@ -956,6 +956,23 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
 }
 
 /**
+ * Unbinds functions from the javascript engine.
+ *
+ * @param jse_ctx the jse context.
+ */
+static void unbind_functions(jse_context_t *jse_ctx)
+{
+#ifdef BUILD_RDK
+    jse_unbind_cosa(jse_ctx);
+#endif
+#ifdef ENABLE_LIBXML2
+    jse_unbind_xml(jse_ctx);
+#endif
+    jse_unbind_jsprocess(jse_ctx);
+    jse_unbind_jscommon(jse_ctx);
+}
+
+/**
  * Utility method that adds an environment variable as an object property
  *
  * Given the object at idx, this function adds the environment variable
@@ -1174,6 +1191,8 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             jse_ctx->req->free(jse_ctx->req);
             jse_ctx->req = NULL;
         }
+
+        unbind_functions(jse_ctx);
     }
     else
     {

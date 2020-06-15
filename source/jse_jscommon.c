@@ -12,6 +12,9 @@
 #include "jse_jscommon.h"
 #include "jse_jserror.h"
 
+/** Reference count for binding. */
+static int ref_count = 0;
+
 /**
  * Runs the code stored in a buffer, optionally identified by a filename.
  * 
@@ -572,6 +575,7 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
 
     JSE_VERBOSE("Binding JS common!")
 
+    JSE_VERBOSE("ref_count=%d", ref_count)
     if (jse_ctx != NULL)
     {
         /* jscommon is dependent upon jserror error objects so bind here */
@@ -581,28 +585,52 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
         }
         else
         {
-            duk_push_c_function(jse_ctx->ctx, do_include, 1);
-            duk_put_global_string(jse_ctx->ctx, "include");
+            if (ref_count == 0)
+            {
+                duk_push_c_function(jse_ctx->ctx, do_include, 1);
+                duk_put_global_string(jse_ctx->ctx, "include");
 
-            duk_push_c_function(jse_ctx->ctx, do_debugPrint, DUK_VARARGS);
-            duk_put_global_string(jse_ctx->ctx, "debugPrint");
+                duk_push_c_function(jse_ctx->ctx, do_debugPrint, DUK_VARARGS);
+                duk_put_global_string(jse_ctx->ctx, "debugPrint");
 
-            duk_push_c_function(jse_ctx->ctx, do_read_file_as_string, 1);
-            duk_put_global_string(jse_ctx->ctx, "readFileAsString");
+                duk_push_c_function(jse_ctx->ctx, do_read_file_as_string, 1);
+                duk_put_global_string(jse_ctx->ctx, "readFileAsString");
 
-            duk_push_c_function(jse_ctx->ctx, do_write_as_file, DUK_VARARGS);
-            duk_put_global_string(jse_ctx->ctx, "writeAsFile");
+                duk_push_c_function(jse_ctx->ctx, do_write_as_file, DUK_VARARGS);
+                duk_put_global_string(jse_ctx->ctx, "writeAsFile");
 
-            duk_push_c_function(jse_ctx->ctx, do_remove_file, 1);
-            duk_put_global_string(jse_ctx->ctx, "removeFile");
+                duk_push_c_function(jse_ctx->ctx, do_remove_file, 1);
+                duk_put_global_string(jse_ctx->ctx, "removeFile");
 
-            duk_push_c_function(jse_ctx->ctx, do_list_directory, 1);
-            duk_put_global_string(jse_ctx->ctx, "listDirectory");
+                duk_push_c_function(jse_ctx->ctx, do_list_directory, 1);
+                duk_put_global_string(jse_ctx->ctx, "listDirectory");
+            }
 
+            ref_count ++;
             ret = 0;
         }
     }
 
     JSE_VERBOSE("ret=%d", ret)
     return ret;
+}
+
+/**
+ * Unbinds the JavaScript extensions.
+ *
+ * Actually just decrements the reference count. Needed for fast cgi
+ * since the same process will rebind. Not unbinding is not an issue
+ * as the duktape context is destroyed each time cleaning everything
+ * up.
+ *
+ * @param jse_ctx the jse context.
+ */
+void jse_unbind_jscommon(jse_context_t * jse_ctx)
+{
+    ref_count --;
+    JSE_VERBOSE("ref_count=%d", ref_count)
+
+    /* TODO: Actually unbind */
+
+    jse_unbind_jserror(jse_ctx);
 }

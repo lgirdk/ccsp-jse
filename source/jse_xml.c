@@ -6,6 +6,9 @@
 static void iterate_array(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent, const char* name);
 static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent);
 
+/** Reference count for binding */
+static int ref_count = 0;
+
 /**
  * Generates the XML for a child, handling an array or object appropriately
  *
@@ -167,13 +170,39 @@ duk_int_t jse_bind_xml(jse_context_t* jse_ctx)
 
     JSE_VERBOSE("Binding XML functions!")
 
+    JSE_VERBOSE("ref_count=%d", ref_count)
     if (jse_ctx != NULL)
     {
-        duk_push_c_function(jse_ctx->ctx, do_objectToXMLString, 2);
-        duk_put_global_string(jse_ctx->ctx, "objectToXMLString");
+        if (ref_count == 0)
+        {
+            duk_push_c_function(jse_ctx->ctx, do_objectToXMLString, 2);
+            duk_put_global_string(jse_ctx->ctx, "objectToXMLString");
+        }
 
+        ref_count ++;
         ret = 0;
     }
 
     return ret;
+}
+
+/**
+ * Unbinds the JavaScript extensions.
+ *
+ * Actually just decrements the reference count. Needed for fast cgi
+ * since the same process will rebind. Not unbinding is not an issue
+ * as the duktape context is destroyed each time cleaning everything
+ * up.
+ *
+ * @param jse_ctx the jse context.
+ */
+void jse_unbind_xml(jse_context_t * jse_ctx)
+{
+    /* Stop unused warning */
+    jse_ctx = jse_ctx;
+
+    ref_count --;
+    JSE_VERBOSE("ref_count=%d", ref_count)
+
+    /* TODO: Actually unbind */
 }

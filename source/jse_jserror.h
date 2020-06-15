@@ -84,6 +84,13 @@ void jse_throw_posix_error(duk_context * ctx, int _errno, const char * format, .
  */
 duk_int_t jse_bind_jserror(jse_context_t * jse_ctx);
 
+/**
+ * Unbinds the JavaScript extensions.
+ *
+ * @param jse_ctx the jse context.
+ */
+void jse_unbind_jserror(jse_context_t * jse_ctx);
+
 #if defined(__cplusplus)
 }
 #endif
