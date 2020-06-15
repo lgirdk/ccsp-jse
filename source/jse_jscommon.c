@@ -130,8 +130,7 @@ static duk_ret_t do_include(duk_context * ctx)
 
             if (stat(filename, &s) != 0)
             {
-                int _errno = errno;
-                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
+                JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", filename, strerror(errno));
             }
             else
             if (!S_ISREG(s.st_mode))
@@ -286,9 +285,8 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
 
             if (stat(filename, &s) != 0)
             {
-                int _errno = errno;
                 /* This does not return */
-                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
+                JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", filename, strerror(errno));
             }
             else
             if (!S_ISREG(s.st_mode))
@@ -383,9 +381,8 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                     fd = open(filename, flags, S_IRWXU);
                     if (fd == -1)
                     {
-                        int _errno = errno;
                         /* This does not return */
-                        JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
+                        JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", filename, strerror(errno));
                     }
                     else
                     {
@@ -396,10 +393,9 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                         TEMP_FAILURE_RETRY(bytes = write(fd, str, len));
 
                         if (bytes == -1) {
-                            int _errno = errno;
                             close(fd);
                             /* This does not return */
-                            JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
+                            JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", filename, strerror(errno));
                         }
 
                         close(fd);
@@ -451,9 +447,8 @@ static duk_ret_t do_remove_file(duk_context * ctx)
         {
             if (unlink(filename) == -1)
             {
-                int _errno = errno;
                 /* This does not return */
-                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", filename, strerror(_errno));
+                JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", filename, strerror(errno));
             }
 
             ret = 0;
@@ -499,9 +494,8 @@ static duk_ret_t do_list_directory(duk_context * ctx)
 
             if (stat(dirname, &s) != 0)
             {
-                int _errno = errno;
                 /* This does not return */
-                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", dirname, strerror(_errno));
+                JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", dirname, strerror(errno));
             }
             else
             if (!S_ISDIR(s.st_mode))
@@ -514,9 +508,8 @@ static duk_ret_t do_list_directory(duk_context * ctx)
                 DIR* dir = opendir(dirname);
                 if (dir == NULL)
                 {
-                    int _errno = errno;
                     /* This does not return */
-                    JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", dirname, strerror(_errno));
+                    JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", dirname, strerror(errno));
                 }
                 else
                 {
@@ -535,10 +528,9 @@ static duk_ret_t do_list_directory(duk_context * ctx)
                             /* NULL is end of list OR an error indicated by errno */
                             if (errno != 0)
                             {
-                                int _errno = errno;
                                 (void) closedir(dir);
                                 /* This does not return */
-                                JSE_THROW_POSIX_ERROR(ctx, _errno, "%s: %s", dirname, strerror(_errno));
+                                JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", dirname, strerror(errno));
                             }
 
                             break;

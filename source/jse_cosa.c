@@ -968,9 +968,8 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
         ppParamNameList = (char **)calloc(paramCount, sizeof(char *));
         if (ppParamNameList == NULL)
         {
-            int _errno = errno;
             /* Does not return */
-            JSE_THROW_POSIX_ERROR(ctx, _errno, "ppParamNameList: %s", strerror(_errno));
+            JSE_THROW_POSIX_ERROR(ctx, errno, "ppParamNameList: %s", strerror(errno));
         }
 
         index = 0;
@@ -1147,9 +1146,8 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
         pParameterValList = (parameterValStruct_t *)calloc(paramCount, sizeof(parameterValStruct_t));
         if (pParameterValList == NULL)
         {
-            int _errno = errno;
             /* Does not return */
-            JSE_THROW_POSIX_ERROR(ctx, _errno, "pParameterValList: %s", strerror(_errno));
+            JSE_THROW_POSIX_ERROR(ctx, errno, "pParameterValList: %s", strerror(errno));
         }
 
         index = 0;
