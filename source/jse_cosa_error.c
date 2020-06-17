@@ -20,33 +20,33 @@ static duk_ret_t do_cosa_error_to_string(duk_context * ctx)
 
     /* duktape indices are either 0, 1, 2, 3 from the top or
         -1, -2, -3 from the bottom */
-    duk_get_prop_string(ctx, -1, "error");
-    /* [ .... this, this.error ] */
+    duk_get_prop_string(ctx, -1, "name");
+    /* [ .... this, this.name ] */
 
     /* duk_push_literal too new for open embedded 3.1 */
     duk_push_string(ctx, ": ");
-    /* [ .... this, this.error, ": " ] */
+    /* [ .... this, this.name, ": " ] */
 
     duk_get_prop_string(ctx, -3, "message");
-    /* [ .... this, this.error, ": ", this.message ] */
+    /* [ .... this, this.name, ": ", this.message ] */
 
     duk_push_string(ctx, " (errorCode=");
-    /* [ .... this, this.error, ": ", this.message, " (errorCode=" ] */
+    /* [ .... this, this.name, ": ", this.message, " (errorCode=" ] */
 
     duk_get_prop_string(ctx, -5, "errorCode");
 
     duk_push_string(ctx, ")");
-    /* [ .... this, this.error, ": ", this.message, " (errorCode=", this.errorCode, ")" ] */
+    /* [ .... this, this.name, ": ", this.message, " (errorCode=", this.errorCode, ")" ] */
 
     /* String concat the bottom 6 items on the stack */
     duk_concat(ctx, 6);
-    /* [ .... this, this.error + ": " + this.message + " (errorCode=" + this.errorCode + ")"" ] */
+    /* [ .... this, this.name + ": " + this.message + " (errorCode=" + this.errorCode + ")"" ] */
 
     duk_swap(ctx, -1, -2);
-    /* [ .... this.error ..., this ] */
+    /* [ .... this.name + ..., this ] */
 
     duk_pop(ctx);
-    /* [ .... this.error ... ] */
+    /* [ .... this.name + ... ] */
 
     /* One item returned */
     return 1;
@@ -93,7 +93,7 @@ static duk_int_t push_cosa_error_va(duk_context * ctx, int error_code, const cha
     duk_push_string(ctx, "CosaError");
     /* [ .... Error, "PosixError" ] */
 
-    duk_put_prop_string(ctx, -2, "error"); /* Error */
+    duk_put_prop_string(ctx, -2, "name"); /* Error */
     /* [ .... Error ] */
 
     duk_push_int(ctx, error_code);

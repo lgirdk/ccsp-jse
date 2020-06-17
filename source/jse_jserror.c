@@ -19,33 +19,33 @@ static duk_ret_t do_posix_error_to_string(duk_context * ctx)
 
     /* duktape indices are either 0, 1, 2, 3 from the top or
         -1, -2, -3 from the bottom */
-    duk_get_prop_string(ctx, -1, "error");
-    /* [ .... this, this.error ] */
+    duk_get_prop_string(ctx, -1, "name");
+    /* [ .... this, this.name ] */
 
     /* duk_push_literal too new for open embedded 3.1 */
     duk_push_string(ctx, ": ");
-    /* [ .... this, this.error, ": " ] */
+    /* [ .... this, this.name, ": " ] */
 
     duk_get_prop_string(ctx, -3, "message");
-    /* [ .... this, this.error, ": ", this.message ] */
+    /* [ .... this, this.name, ": ", this.message ] */
 
     duk_push_string(ctx, " (errno=");
-    /* [ .... this, this.error, ": ", this.message, " (errno=" ] */
+    /* [ .... this, this.name, ": ", this.message, " (errno=" ] */
 
     duk_get_prop_string(ctx, -5, "errno");
 
     duk_push_string(ctx, ")");
-    /* [ .... this, this.error, ": ", this.message, " (errno=", this.errno, ")" ] */
+    /* [ .... this, this.name, ": ", this.message, " (errno=", this.errno, ")" ] */
 
     /* String concat the bottom 6 items on the stack */
     duk_concat(ctx, 6);
-    /* [ .... this, this.error + ": " + this.message + " (errno=" + this.errno + ")"" ] */
+    /* [ .... this, this.name + ": " + this.message + " (errno=" + this.errno + ")"" ] */
 
     duk_swap(ctx, -1, -2);
-    /* [ .... this.error ..., this ] */
+    /* [ .... this.name + ..., this ] */
 
     duk_pop(ctx);
-    /* [ .... this.error ... ] */
+    /* [ .... this.name + ... ] */
 
     /* One item returned */
     return 1;
@@ -92,7 +92,7 @@ static duk_int_t push_posix_error_va(duk_context * ctx, int _errno, const char *
     duk_push_string(ctx, "PosixError");
     /* [ .... Error, "PosixError" ] */
 
-    duk_put_prop_string(ctx, -2, "error"); /* Error */
+    duk_put_prop_string(ctx, -2, "name"); /* Error */
     /* [ .... Error ] */
 
     duk_push_int(ctx, _errno);
