@@ -556,6 +556,39 @@ static duk_ret_t do_list_directory(duk_context * ctx)
 }
 
 /**
+ * The binding for sleep()
+ *
+ * This function sleeps the process for the specified number of seconds.
+ *
+ * @param ctx the duktape context.
+ * @return an error status or 0.
+ */
+duk_ret_t do_sleep(duk_context * ctx)
+{
+    duk_ret_t ret = DUK_RET_ERROR;
+
+    if (duk_is_number(ctx, -1))
+    {
+        unsigned int delay = (unsigned int)duk_get_uint_default(ctx, -1, 0);
+        do
+        {
+            delay = sleep(delay);
+        } 
+        while (delay > 0);
+        
+        ret = 0;
+    }
+    else
+    {
+        /* Does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument!");
+    }
+
+    JSE_VERBOSE("ret=%d", ret)
+    return ret;
+}
+
+/**
  * Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
@@ -596,6 +629,9 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
 
                 duk_push_c_function(jse_ctx->ctx, do_list_directory, 1);
                 duk_put_global_string(jse_ctx->ctx, "listDirectory");
+
+                duk_push_c_function(jse_ctx->ctx, do_sleep, 1);
+                duk_put_global_string(jse_ctx->ctx, "sleep");
             }
 
             ref_count ++;
