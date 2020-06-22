@@ -589,6 +589,54 @@ duk_ret_t do_sleep(duk_context * ctx)
 }
 
 /**
+ * The binding for usleep()
+ *
+ * This function sleeps the process for the specified number of microseconds.
+ *
+ * @param ctx the duktape context.
+ * @return an error status or 0.
+ */
+duk_ret_t do_usleep(duk_context * ctx)
+{
+    duk_ret_t ret = DUK_RET_ERROR;
+
+    if (duk_is_number(ctx, -1))
+    {
+        unsigned int delay = (unsigned int)duk_get_uint_default(ctx, -1, 0);
+        struct timespec req;
+        struct timespec rem;
+        int err = -1;
+
+        req.tv_sec  = (delay / 1000000);
+        req.tv_nsec = (delay % 1000000) * 1000;
+
+        do
+        {
+            err = nanosleep(&req, &rem);
+            req.tv_sec  = rem.tv_sec;
+            req.tv_nsec = rem.tv_nsec;
+        }
+        while ((err == -1) && (errno == EINTR));
+
+        if (err == -1)
+        {
+            /* Does not return */
+            JSE_THROW_POSIX_ERROR(ctx, errno, "nanosleep() failed: %s", strerror(errno));
+        }
+        
+        ret = 0;
+    }
+    else
+    {
+        /* Does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Invalid argument!");
+    }
+
+    JSE_VERBOSE("ret=%d", ret)
+    return ret;
+}
+
+/**
  * Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
@@ -632,7 +680,10 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
 
                 duk_push_c_function(jse_ctx->ctx, do_sleep, 1);
                 duk_put_global_string(jse_ctx->ctx, "sleep");
-            }
+
+                duk_push_c_function(jse_ctx->ctx, do_usleep, 1);
+                duk_put_global_string(jse_ctx->ctx, "usleep");
+             }
 
             ref_count ++;
             ret = 0;
