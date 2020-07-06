@@ -249,10 +249,6 @@ static pid_t _waitpid(int pid, int * const pwstatus, int options)
  * process has terminated. The function returns on either an error or
  * whether the process terminates.
  * 
- * If there is an error the values pointed to by pOutbuf, pOutlen, 
- * pErrbuf and pErrlen will be set to NULL and 0 and the buffers
- * freed.
- * 
  * @param pid the PID to wait for
  * @param outfd the stdout file descriptor.
  * @param errfs the stderr file descriptor.
@@ -380,18 +376,6 @@ static int read_and_wait(int pid, int outfd, int errfd,
 
     /* Errors break out of the loop */
     } while (ret != 0);
-
-    if (ret != 0)
-    {
-        /* Per C99 free(NULL) is a NOP. */
-        free(*pOutbuf);
-        free(*pErrbuf);
-
-        *pOutbuf = NULL;
-        *pOutlen = 0;
-        *pErrbuf = NULL;
-        *pErrlen = 0;
-    }
 
     if (outfd != -1)
     {

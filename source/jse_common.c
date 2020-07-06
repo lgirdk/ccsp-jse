@@ -58,9 +58,6 @@ void jse_context_destroy(jse_context_t *jse_ctx)
  * If the buffer is resized the values pointed to by pstr, poff and psize
  * will be updated.
  *
- * If the read fails the buffer is freed and the values of pbuffer, poff and
- * psize will be set to NULL and 0 as appropriate.
- *
  * @param fd the file descriptor to read.
  * @param pbuffer a pointer to the buffer.
  * @param poff a pointer to the buffer offset.
@@ -79,11 +76,6 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
     if (bytes == -1)
     {
         JSE_ERROR("read() failed: %s", strerror(errno))
-
-        free(buffer);
-        buffer = NULL;
-        off = 0;
-        size = 0;
     }
     else
     {
@@ -95,15 +87,19 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
             /* Do we need to resize the string */
             if (off == (ssize_t)size)
             {
+                char * newbuf = NULL;
+
                 size *= 2;
 
-                buffer = (char*)realloc(buffer, size);
-                if (buffer == NULL)
+                newbuf = (char*)realloc(buffer, size);
+                if (newbuf == NULL)
                 {
                     JSE_ERROR("realloc() failed: %s", strerror(errno));
                     bytes = -1;
-                    off = 0;
-                    size = 0;
+                }
+                else
+                {
+                    buffer = newbuf;
                 }
             }
         }
@@ -120,8 +116,6 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
             {
                 JSE_ERROR("realloc() failed: %s", strerror(errno));
                 bytes = -1;
-                off = 0;
-                size = 0;
             }
             else
             {
@@ -134,9 +128,12 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
         }
     }
 
-    *pbuffer = buffer;
-    *poff = off;
-    *psize = size;
+    if (bytes != -1)
+    {
+        *pbuffer = buffer;
+        *poff = off;
+        *psize = size;
+    }
 
     return bytes;
 }
@@ -165,6 +162,7 @@ ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize)
     if (buffer == NULL)
     {
         JSE_ERROR("malloc() failed: %s", strerror(errno))
+        size = -1;
     }
     else
     {
@@ -176,7 +174,9 @@ ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize)
 
         if (bytes == -1)
         {
-            JSE_ERROR("jse_read_fd_once(0 failed: %s", strerror(errno))
+            JSE_ERROR("jse_read_fd_once() failed: %s", strerror(errno))
+            free(buffer);
+            size = -1;
         }
         else
         {
@@ -185,7 +185,7 @@ ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize)
         }
     }
 
-    return bytes;
+    return size;
 }
 
 /**
