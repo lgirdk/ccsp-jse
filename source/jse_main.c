@@ -1040,7 +1040,14 @@ static duk_int_t create_request_object(jse_context_t *jse_ctx)
     add_env_as_object_property(ctx, idx, "HTTP_COOKIE");
     add_env_as_object_property(ctx, idx, "HTTP_HOST");
     add_env_as_object_property(ctx, idx, "HTTP_REFERER");
+    add_env_as_object_property(ctx, idx, "HTTP_USER_AGENT");
+    add_env_as_object_property(ctx, idx, "HTTPS");
+    add_env_as_object_property(ctx, idx, "PATH");
     add_env_as_object_property(ctx, idx, "QUERY_STRING");
+    add_env_as_object_property(ctx, idx, "REMOTE_ADDR");
+    add_env_as_object_property(ctx, idx, "REMOTE_HOST");
+    add_env_as_object_property(ctx, idx, "REMOTE_PORT");
+    add_env_as_object_property(ctx, idx, "REMOTE_USER");
     add_env_as_object_property(ctx, idx, "REQUEST_METHOD");
     add_env_as_object_property(ctx, idx, "REQUEST_URI");
     add_env_as_object_property(ctx, idx, "SCRIPT_FILENAME");
