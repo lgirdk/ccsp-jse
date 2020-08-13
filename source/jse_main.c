@@ -1265,15 +1265,15 @@ int main(int argc, char **argv)
             {"cookies",  no_argument,       0, 'c' },
             {"get",      no_argument,       0, 'g' },
             {"help",     no_argument,       0, 'h' },
-            {"post",     no_argument,       0, 'p' },
-            {"verbose",  no_argument,       0, 'v' },
 #ifdef BUILD_RDK
             {"no-ccsp",  no_argument,       0, 'n' },
 #endif
+            {"post",     no_argument,       0, 'p' },
+            {"verbose",  no_argument,       0, 'v' },
             {0,          0,                 0,  0  }
         };
 
-        c = getopt_long(argc, argv, "cghpvn", long_options, &option_index);
+        c = getopt_long(argc, argv, "cghnpv", long_options, &option_index);
         if (c == -1)
         {
             break;
@@ -1291,18 +1291,9 @@ int main(int argc, char **argv)
                 process_get = true;
                 break;
 
-            case 'p':
-                JSE_DEBUG("POST processing enabled!")
-                process_post = true;
-                break;
-
             case 'h':
                 help(argv[0]);
                 exit(EXIT_SUCCESS);
-
-            case 'v':
-                jse_verbosity ++;
-                break;
 
 #ifdef BUILD_RDK
             case 'n':
@@ -1310,6 +1301,15 @@ int main(int argc, char **argv)
                 init_ccsp = false;
                 break;
 #endif
+
+            case 'p':
+                JSE_DEBUG("POST processing enabled!")
+                process_post = true;
+                break;
+
+            case 'v':
+                jse_verbosity ++;
+                break;
 
             default:
                 JSE_ERROR("Invalid option")
@@ -1360,6 +1360,13 @@ int main(int argc, char **argv)
             {
                 process_get = true;
             }
+#ifdef BUILD_RDK
+            else
+            if (!strcmp("-n", arg) || !strcmp("--no-ccsp", arg))
+            {
+                init_ccsp = false;
+            }
+#endif
             else
             if (!strcmp("-p", arg) || !strcmp("--post", arg))
             {
@@ -1370,13 +1377,6 @@ int main(int argc, char **argv)
             {
                 jse_verbosity ++;
             }
-#ifdef BUILD_RDK
-            else
-            if (!strcmp("-n", arg) || !strcmp("--no-ccsp", arg))
-            {
-                init_ccsp = false;
-            }
-#endif
 
             arg = strtok(NULL, " ");
         }
