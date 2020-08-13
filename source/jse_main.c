@@ -1100,9 +1100,6 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
     if (ret == 0)
     {
         /* Parse the request */
-#ifdef ENABLE_FASTCGI
-        jse_ctx->req = qcgireq_parse(jse_ctx->req, 0);
-#else
         if (process_post)
         {
             jse_ctx->req = qcgireq_parse(jse_ctx->req, Q_CGI_POST);
@@ -1117,7 +1114,6 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
         {
             jse_ctx->req = qcgireq_parse(jse_ctx->req, Q_CGI_COOKIE);
         }
-#endif
 
         JSE_VERBOSE("jse_ctx->req=%p", jse_ctx->req)
 
@@ -1438,11 +1434,7 @@ int main(int argc, char **argv)
             jse_context_destroy(jse_ctx);
         }
 
-#ifdef ENABLE_FASTCGI
-        if (ret != 0)
-#else
         if ((ret != 0) && (process_get || process_post || process_cookie))
-#endif
         {
             basic_return_error(HTTP_STATUS_INTERNAL_SERVER_ERROR);
             ret = 0;
