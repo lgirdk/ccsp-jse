@@ -29,6 +29,8 @@
 #define EXIT_FATAL 3
 
 #define JSE_REQUEST_OBJECT_NAME "Request"
+#define JSE_UPLOAD_DIR "/var/jse/uploads"
+#define JSE_UPLOAD_EXPIRY_SECS 3600
 
 /* List of HTTP status codes */
 #define HTTP_STATUS_OK                     200
@@ -45,6 +47,9 @@
 #define HTTP_STATUS_IM_A_TEAPOT            418
 #define HTTP_STATUS_INTERNAL_SERVER_ERROR  500
 #define HTTP_STATUS_NOT_IMPLEMENTED        501
+
+/* The upload directory */
+static char * upload_dir = NULL;
 
 /* The requests to process */
 static bool process_get     = false;
@@ -99,6 +104,14 @@ struct cookie_data_s
 typedef struct cookie_data_s cookie_data_t;
 
 static cookie_data_t http_cookie;
+
+/* Linked list of 'file' objects */
+struct file_object_s
+{
+    char* name;
+    duk_int_t idx;
+    struct file_object_s * next;
+};
 
 /**
  * Sets the value of a cookie.
@@ -1006,36 +1019,126 @@ static duk_int_t add_env_as_object_property(duk_context *ctx, duk_idx_t idx, con
     return 0;
 }
 
-/**
- * Creates a request object.
- *
- * The query string parameters are passed as properties in an object on
- * the duktape stack.
- *
- * @param jse_ctx the jse context.
- * @return an error code or 0.
- */
-static duk_int_t create_request_object(jse_context_t *jse_ctx)
+static void create_request_object_params(duk_context *ctx, qentry_t *req, duk_int_t idx)
 {
-    duk_context *ctx = jse_ctx->ctx;
-    qentry_t *req = jse_ctx->req;
+    struct file_object_s *file_objs = NULL;
+    struct file_object_s *file_obj =  NULL;
     qentobj_t obj;
-    duk_idx_t idx, idx2;
+    duk_idx_t idx2;
+    char *propName;
 
-    /* Push an object on to the stack comprising all the parameters */
+    JSE_VERBOSE("create_request_object_params(%p, %p, %d)", ctx, req, idx)
+
     memset(&obj, 0, sizeof(obj));
-    idx = duk_push_object(ctx);
 
     idx2 = duk_push_object(ctx);
+
+    JSE_VERBOSE("idx2=%d", idx2);
+
     while (req->getnext(req, &obj, NULL, false))
     {
         JSE_DEBUG("Parameter: name=\"%s\", value=\"%s\"", obj.name, (char*)obj.data)
-        duk_push_string(ctx, (char*)obj.data);
-        duk_put_prop_string(ctx, idx2, obj.name);
+
+        // File uploads result in several parameters with the upload name
+        // followed by . followed by property, e.g. filename, mimetype etc.
+        propName = strchr(obj.name, '.');
+        if (propName != NULL)
+        {
+            file_obj = file_objs;
+
+            *propName++ = '\0';
+            while (file_obj)
+            {
+                if (!strcmp(obj.name, file_obj->name))
+                {
+                    break;
+                }
+
+                file_obj = file_obj->next;
+            }
+
+            JSE_VERBOSE("file_obj=%p", file_obj)
+
+            if (file_obj == NULL)
+            {
+                // Create a new file object
+                file_obj = (struct file_object_s*)calloc(sizeof(struct file_object_s), 1);
+                if (file_obj != NULL)
+                {
+                    JSE_DEBUG("Creating object: %s", obj.name)
+
+                    file_obj->name = strdup(obj.name);
+                    if (file_obj->name != NULL)
+                    {
+                        // Create the object and add it
+                        file_obj->idx = duk_push_object(ctx);
+
+                        // You can't put an object as a property of a parent
+                        // object until all its own properties are set. So no
+                        // duk_put_prop_string(ctx, idx, "QueryParameters");
+                        // here.
+
+                        // Link in the new object
+                        file_obj->next = file_objs;
+                        file_objs = file_obj;
+                    }
+                    else
+                    {
+                        JSE_ERROR("strdup() failed: %s", strerror(errno))
+                        free(file_obj);
+
+                        // Skip on to next param
+                        continue;
+                    }
+                }
+                else
+                {
+                    JSE_ERROR("calloc() failed: %s", strerror(errno))
+
+                    // Skip on to next param
+                    continue;
+                }
+            }
+
+            JSE_VERBOSE("file_obj=%p", file_obj)
+
+            if (file_obj != NULL)
+            {
+                JSE_VERBOSE("Adding file property: %s (idx=%d)", propName, file_obj->idx)
+
+                // Add the property to the file object
+                duk_push_string(ctx, (char*)obj.data);
+                duk_put_prop_string(ctx, file_obj->idx, propName);
+            }
+        }
+        else
+        {
+            // Simple case for a string
+            duk_push_string(ctx, (char*)obj.data);
+            duk_put_prop_string(ctx, idx2, obj.name);
+        }
+    }
+
+    // Clean up temp data and set properties. This should be in reverse
+    // order to them being added. I.e. the first file object pushed on to
+    // the stack will be the last one read.
+    while (file_objs)
+    {
+        file_obj  = file_objs;
+        file_objs = file_objs->next;
+
+        JSE_VERBOSE("Adding file as property of QueryParameters: %s (idx=%d)", file_obj->name, idx2)
+
+        duk_put_prop_string(ctx, idx2, file_obj->name);
+        free(file_obj->name);
+        free(file_obj);
     }
 
     duk_put_prop_string(ctx, idx, "QueryParameters");
+}
 
+static void create_request_object_envs(duk_context *ctx, duk_int_t idx)
+{
     add_env_as_object_property(ctx, idx, "DOCUMENT_ROOT");
     add_env_as_object_property(ctx, idx, "HTTP_COOKIE");
     add_env_as_object_property(ctx, idx, "HTTP_HOST");
@@ -1054,6 +1157,25 @@ static duk_int_t create_request_object(jse_context_t *jse_ctx)
     add_env_as_object_property(ctx, idx, "SCRIPT_NAME");
     add_env_as_object_property(ctx, idx, "SERVER_NAME");
     add_env_as_object_property(ctx, idx, "SERVER_PORT");
+}
+
+/**
+ * Creates a request object.
+ *
+ * The query string parameters are passed as properties in an object on
+ * the duktape stack.
+ *
+ * @param jse_ctx the jse context.
+ * @return an error code or 0.
+ */
+static duk_int_t create_request_object(jse_context_t *jse_ctx)
+{
+    duk_context *ctx = jse_ctx->ctx;
+    qentry_t *req = jse_ctx->req;
+    duk_int_t idx = duk_push_object(ctx);
+
+    create_request_object_params(ctx, req, idx);
+    create_request_object_envs(ctx, idx);
 
     duk_put_global_string(ctx, JSE_REQUEST_OBJECT_NAME);
 
@@ -1099,6 +1221,12 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
     ret = bind_functions(jse_ctx); 
     if (ret == 0)
     {
+        /* Set the file upload options (POST only) */
+        if (process_post)
+        {
+            jse_ctx->req = qcgireq_setoption(jse_ctx->req, true, upload_dir, JSE_UPLOAD_EXPIRY_SECS);
+        }
+
         /* Parse the request */
         if (process_post)
         {
@@ -1258,18 +1386,19 @@ int main(int argc, char **argv)
         int c, option_index = 0;
         static struct option long_options[] =
         {
-            {"cookies",  no_argument,       0, 'c' },
-            {"get",      no_argument,       0, 'g' },
-            {"help",     no_argument,       0, 'h' },
+            {"cookies",     no_argument,       0, 'c' },
+            {"get",         no_argument,       0, 'g' },
+            {"help",        no_argument,       0, 'h' },
 #ifdef BUILD_RDK
-            {"no-ccsp",  no_argument,       0, 'n' },
+            {"no-ccsp",     no_argument,       0, 'n' },
 #endif
-            {"post",     no_argument,       0, 'p' },
-            {"verbose",  no_argument,       0, 'v' },
-            {0,          0,                 0,  0  }
+            {"post",        no_argument,       0, 'p' },
+            {"upload-dir",  required_argument, 0, 'u' },
+            {"verbose",     no_argument,       0, 'v' },
+            {0,             0,                 0,  0  }
         };
 
-        c = getopt_long(argc, argv, "cghnpv", long_options, &option_index);
+        c = getopt_long(argc, argv, "cghnpu:v", long_options, &option_index);
         if (c == -1)
         {
             break;
@@ -1301,6 +1430,11 @@ int main(int argc, char **argv)
             case 'p':
                 JSE_DEBUG("POST processing enabled!")
                 process_post = true;
+                break;
+
+            case 'u':
+                JSE_DEBUG("Upload directory: %s", optarg)
+                upload_dir = strdup(optarg);
                 break;
 
             case 'v':
@@ -1364,6 +1498,37 @@ int main(int argc, char **argv)
             }
 #endif
             else
+            if (!strncmp("-u", arg, 2))
+            {
+                if (strlen(arg) > 2)
+                {
+                    /* path immediately follows option */
+                    arg += 2;
+                }
+                else
+                {
+                    arg = strtok(NULL, " ");
+                }
+                
+                if (arg == NULL) {
+                    JSE_WARNING("Missing parameter for -u")
+                    break;
+                }
+
+                upload_dir = strdup(arg);
+            }
+            else 
+            if (!strcmp("--upload-dir", arg))
+            {
+                arg = strtok(NULL, " ");
+                if (arg == NULL) {
+                    JSE_WARNING("Missing parameter for --upload-dir")
+                    break;
+                }
+
+                upload_dir = strdup(arg);
+            }
+            else
             if (!strcmp("-p", arg) || !strcmp("--post", arg))
             {
                 process_post = true;
@@ -1375,6 +1540,19 @@ int main(int argc, char **argv)
             }
 
             arg = strtok(NULL, " ");
+        }
+    }
+
+    // Post only
+    if (process_post)
+    {
+        if (upload_dir == NULL) {
+            upload_dir = JSE_UPLOAD_DIR;
+        }
+
+        if (jse_mkdir(upload_dir))
+        {
+            exit(EXIT_FATAL);
         }
     }
 

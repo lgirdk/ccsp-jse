@@ -94,6 +94,21 @@ ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize);
  */
 ssize_t jse_read_file(const char * const filename, char ** const pbuffer, size_t * const psize);
 
+/**
+ * Creates a sub directory and all the intermediate directories.
+ *
+ * Creates a sub directory and all the intermediate directories. If the
+ * directory currently exists that is not an error. If a file exists with
+ * the same name, or any elements in the path are not a directory, that
+ * is an error. Errors also occur due to permissions, read only file
+ * systems and so on.
+ *
+ * @param path the sub directory path.
+ *
+ * @return 0 on success or -1 on error.
+ */
+int jse_mkdir(const char* path);
+
 #if defined(__cplusplus)
 }
 #endif

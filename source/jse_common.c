@@ -306,4 +306,121 @@ error2:
     return -1;
 }
 
+/**
+ * Creates a sub directory and all the intermediate directories.
+ *
+ * Creates a sub directory and all the intermediate directories. If the
+ * directory currently exists that is not an error. If a file exists with
+ * the same name, or any elements in the path are not a directory, that
+ * is an error. Errors also occur due to permissions, read only file
+ * systems and so on.
+ *
+ * @param path the sub directory path.
+ *
+ * @return 0 on success or -1 on error.
+ */
+int jse_mkdir(const char* path)
+{
+    int ret = -1;
 
+    // NULL pointer is an error
+    if (path == NULL)
+    {
+        JSE_ERROR("path is NULL!")
+    }
+    else
+    // If must be an absolute path.
+    if (path[0] != '/')
+    {
+        JSE_ERROR("Invalid path: %s", path);
+    }
+    else
+    {
+        struct stat st = { 0 };
+
+        // Test the path. If it errors, try and make it.
+        if (stat(path, &st) != 0)
+        {
+            char* tmp = NULL;
+
+            JSE_INFO("stat(): %s", strerror(errno))
+
+            tmp = strdup(path);
+            if (tmp != NULL)
+            {
+                bool err = false;
+                char * p = NULL;
+
+                // Make all the intermediate directories
+                for (p = tmp + 1; *p && !err; p++)
+                {
+                    if (*p == '/')
+                    {
+                        *p = 0;
+                        JSE_VERBOSE("mkdir(\"%s\", S_IRWXU)", tmp)
+                        if (mkdir(tmp, S_IRWXU) != 0)
+                        {
+                            switch (errno)
+                            {
+                                // Allowed errors
+                                case EROFS:
+                                case EEXIST:
+                                    JSE_INFO("mkdir(): %s", strerror(errno))
+                                    break;
+                                default:
+                                    JSE_ERROR("mkdir(): %s", strerror(errno))
+                                    err = true;
+                                    break;
+                            }
+
+                        }
+                        *p = '/';
+                    }
+                }
+
+                // Make the final directory
+                if (!err)
+                {
+                    JSE_VERBOSE("mkdir(\"%s\", S_IRWXU)", tmp)
+                    if (mkdir(tmp, S_IRWXU) != 0)
+                    {
+                        // Existing is allowed
+                        if (errno != EEXIST)
+                        {
+                            JSE_ERROR("mkdir(): %s", strerror(errno))
+                        }
+                        else
+                        {
+                            JSE_INFO("mkdir(): %s", strerror(errno))
+                            ret = 0;
+                        }
+                    }
+                    else
+                    {
+                        ret = 0;
+                    }
+                }
+
+                free(tmp);
+            }
+            else
+            {
+                JSE_ERROR("strdup() failed: %s", strerror(errno))
+            }
+        }
+        else
+        {
+            // Path exists. Is it a directory?
+            if (S_ISDIR(st.st_mode))
+            {
+                ret = 0;
+            }
+            else
+            {
+                JSE_ERROR("%s: not a directory", path);
+            }
+        }
+    }
+
+    return ret;
+}
