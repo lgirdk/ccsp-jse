@@ -10,9 +10,22 @@
 
 #include "jse_debug.h"
 
+/** The verbosity level */
 int jse_verbosity = 0;
 
-void jse_debug(char *file, int line, int level, const char *format, ...)
+/** The enter exit debug flag */
+bool jse_enter_exit = false;
+
+/**
+ * Outputs a line of debug.
+ *
+ * @param file the source file name
+ * @param line the source line number
+ * @param levelStr the level as a string
+ * @param format a printf() style formatting string
+ * @param ... further printf() style arguments
+ */
+void jse_debugPrint(char *file, int line, const char* levelStr, const char *format, ...)
 {
     struct timeval tv;
     long int ms;
@@ -29,25 +42,31 @@ void jse_debug(char *file, int line, int level, const char *format, ...)
 
     if (len >= 0 && len < (int)sizeof(buffer))
     {
-        switch (level)
-        {
-            case JSE_DEBUG_LEVEL_ERROR:
-                fprintf(stderr, "%08ld.%03ld:%s:%d:ERROR:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
-                break;
-            case JSE_DEBUG_LEVEL_WARNING:
-                fprintf(stderr, "%08ld.%03ld:%s:%d:WARNING:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
-                break;
-            case JSE_DEBUG_LEVEL_INFO:
-                fprintf(stderr, "%08ld.%03ld:%s:%d:INFO:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
-                break;
-            case JSE_DEBUG_LEVEL_DEBUG:
-                fprintf(stderr, "%08ld.%03ld:%s:%d:DEBUG:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
-                break;
-            case JSE_DEBUG_LEVEL_VERBOSE:
-                fprintf(stderr, "%08ld.%03ld:%s:%d:VERBOSE:%s\n", (long int)tv.tv_sec, ms, file, line, buffer);
-                break;
-            default:
-                break;
-        }
+        fprintf(stderr, "%08ld.%03ld:%s:%d:%s:%s\n", (long int)tv.tv_sec, ms, file, line, levelStr, buffer);
     }
+}
+
+/**
+ * Returns the textual debug level for an integer debug level.
+ *
+ * @param level the debug level
+ * @return the textual debug level
+ */
+const char* jse_debugGetLevel(int level)
+{
+    static const char* levels[] =
+    {
+        "ERROR",
+        "WARNING",
+        "INFO",
+        "DEBUG",
+        "VERBOSE"
+    };
+
+    if (level > JSE_DEBUG_LEVEL_MAX)
+    {
+        return "UNKNOWN";
+    }
+
+    return levels[level];
 }

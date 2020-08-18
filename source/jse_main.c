@@ -1387,6 +1387,7 @@ int main(int argc, char **argv)
         static struct option long_options[] =
         {
             {"cookies",     no_argument,       0, 'c' },
+            {"enter-exit",  no_argument,       0, 'e' },
             {"get",         no_argument,       0, 'g' },
             {"help",        no_argument,       0, 'h' },
 #ifdef BUILD_RDK
@@ -1398,7 +1399,11 @@ int main(int argc, char **argv)
             {0,             0,                 0,  0  }
         };
 
-        c = getopt_long(argc, argv, "cghnpu:v", long_options, &option_index);
+#ifdef JSE_DEBUG_ENABLED
+        c = getopt_long(argc, argv, "ceghnpu:v", long_options, &option_index);
+#else
+        c = getopt_long(argc, argv, "cghnpu:", long_options, &option_index);
+#endif
         if (c == -1)
         {
             break;
@@ -1410,6 +1415,13 @@ int main(int argc, char **argv)
                 JSE_DEBUG("Cookie processing enabled!")
                 process_cookie = true;
                 break;
+
+#ifdef JSE_DEBUG_ENABLED
+            case 'e':
+                JSE_DEBUG("Enter/Exit debug enabled!")
+                jse_enter_exit = true;
+                break;
+#endif
 
             case 'g':
                 JSE_DEBUG("GET processing enabled!")
@@ -1437,9 +1449,11 @@ int main(int argc, char **argv)
                 upload_dir = strdup(optarg);
                 break;
 
+#ifdef JSE_DEBUG_ENABLED
             case 'v':
                 jse_verbosity ++;
                 break;
+#endif
 
             default:
                 JSE_ERROR("Invalid option")
@@ -1485,6 +1499,13 @@ int main(int argc, char **argv)
             {
                 process_cookie = true;
             }
+#ifdef JSE_DEBUG_ENABLED
+            else
+            if (!strcmp("-e", arg) || !strcmp("--enter-exit", arg))
+            {
+                jse_enter_exit = true;
+            }
+#endif
             else
             if (!strcmp("-g", arg) || !strcmp("--get", arg))
             {
@@ -1533,11 +1554,13 @@ int main(int argc, char **argv)
             {
                 process_post = true;
             }
+#ifdef JSE_DEBUG_ENABLED
             else
             if (!strcmp("-v", arg) || !strcmp("--verbose", arg))
             {
                 jse_verbosity ++;
             }
+#endif
 
             arg = strtok(NULL, " ");
         }

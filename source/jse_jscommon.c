@@ -240,11 +240,21 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
     }
 
     msg = (char*)duk_safe_to_string(ctx, 0);
-    jse_debug(filename, line, level, "%s", msg);
-    return 0;
-#else
-    return 0;
+
+    if (level <= JSE_DEBUG_LEVEL_MAX)
+    {
+        jse_debugPrint(filename, line, jse_debugGetLevel(level), "%s", msg);
+    }
+    else
+    {
+        char tmp[16];
+
+        snprintf(tmp, sizeof(tmp), "LEVEL:%d", level);
+        jse_debugPrint(filename, line, tmp, "%s", msg);
+    }
 #endif
+
+    return 0;
 }
 
 /**
