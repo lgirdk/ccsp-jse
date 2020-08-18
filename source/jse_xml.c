@@ -107,6 +107,8 @@ static duk_ret_t do_objectToXMLString(duk_context * ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
 
+    JSE_ENTER("do_objectToXMLString(%p)", ctx)
+
     if (duk_is_string(ctx, -2))
     {
         xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
@@ -154,7 +156,7 @@ static duk_ret_t do_objectToXMLString(duk_context * ctx)
         ret = DUK_RET_TYPE_ERROR;
     }
     
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_objectToXMLString()=%d", ret)
     return ret;
 }
 
@@ -168,7 +170,7 @@ duk_int_t jse_bind_xml(jse_context_t* jse_ctx)
 {
     duk_int_t ret = DUK_ERR_ERROR;
 
-    JSE_VERBOSE("Binding XML functions!")
+    JSE_ENTER("jse_bind_xml(%p)", jse_ctx)
 
     JSE_VERBOSE("ref_count=%d", ref_count)
     if (jse_ctx != NULL)
@@ -183,6 +185,7 @@ duk_int_t jse_bind_xml(jse_context_t* jse_ctx)
         ret = 0;
     }
 
+    JSE_EXIT("jse_bind_xml()=%d", ret)
     return ret;
 }
 
@@ -198,6 +201,8 @@ duk_int_t jse_bind_xml(jse_context_t* jse_ctx)
  */
 void jse_unbind_xml(jse_context_t * jse_ctx)
 {
+    JSE_ENTER("jse_unbind_xml(%p)", jse_ctx)
+
     /* Stop unused warning */
     jse_ctx = jse_ctx;
 
@@ -205,4 +210,6 @@ void jse_unbind_xml(jse_context_t * jse_ctx)
     JSE_VERBOSE("ref_count=%d", ref_count)
 
     /* TODO: Actually unbind */
+
+    JSE_EXIT("jse_unbind_xml()")
 }

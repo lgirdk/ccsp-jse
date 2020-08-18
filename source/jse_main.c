@@ -343,7 +343,10 @@ static void return_error(jse_context_t *jse_ctx, int status, const char* mimetyp
     if (len >= (int)sizeof(buffer))
     {
         strcpy(buffer, 
-            "<html><head><title>Internal server error</title></head><body>Buffer overflow in the error handler!</body></html>\r\n");
+            "<html>"
+            "<head><title>Internal server error</title></head>"
+            "<body>Buffer overflow in the error handler!</body>"
+            "</html>\r\n");
         status = HTTP_STATUS_INTERNAL_SERVER_ERROR;
     }
     va_end(ap);
@@ -458,11 +461,12 @@ static void handle_fatal_error(void* userdata, const char *msg)
  */
 static duk_context *init_duktape(jse_context_t *jse_ctx)
 {
-    JSE_VERBOSE("init_duktape()")
+    JSE_ENTER("init_duktape(%p)", jse_ctx)
 
     /* TODO: low mem allocators */
     jse_ctx->ctx = duk_create_heap(NULL, NULL, NULL, jse_ctx, handle_fatal_error);
 
+    JSE_EXIT("init_duktape()=%p", jse_ctx->ctx)
     return jse_ctx->ctx;
 }
 
@@ -473,9 +477,11 @@ static duk_context *init_duktape(jse_context_t *jse_ctx)
  */
 static void cleanup_duktape(jse_context_t *jse_ctx)
 {
-    JSE_VERBOSE("cleanup_duktape()")
+    JSE_ENTER("cleanup_duktape(%p)", jse_ctx)
 
     duk_destroy_heap(jse_ctx->ctx);
+
+    JSE_EXIT("cleanup_duktape()")
 }
 
 /**
@@ -492,6 +498,8 @@ static duk_int_t run_stdin(jse_context_t *jse_ctx)
     duk_int_t ret = DUK_ERR_ERROR;
     char *buffer = NULL;
     size_t size = 0;
+
+    JSE_ENTER("run_stdin(%p)", jse_ctx)
  
     if (jse_read_fd(STDIN_FILENO, &buffer, &size) > 0)
     {
@@ -508,7 +516,7 @@ static duk_int_t run_stdin(jse_context_t *jse_ctx)
         duk_push_error_object(jse_ctx->ctx, DUK_ERR_ERROR,  "%s", strerror(errno));
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("run_stdin()=%d", ret)
     return ret;
 }
 
@@ -528,7 +536,7 @@ static duk_int_t run_file(jse_context_t * jse_ctx)
     size_t size = 0;
     ssize_t bytes = 0;
 
-    JSE_VERBOSE("run_file()")
+    JSE_ENTER("run_file(%p)", jse_ctx)
 
     bytes = jse_read_file(jse_ctx->filename, &buffer, &size);
     if (bytes > 0)
@@ -547,7 +555,7 @@ static duk_int_t run_file(jse_context_t * jse_ctx)
             "%s: %s", jse_ctx->filename, strerror(errno));
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("run_file()=%d", ret)
     return ret;
 }
 
@@ -567,6 +575,7 @@ static duk_ret_t do_print(duk_context *ctx)
     duk_ret_t ret = DUK_RET_ERROR;
 
     JSE_ASSERT(ctx != NULL)
+    JSE_ENTER("do_print(%p)", ctx)
 
     if (is_http_request)
     {
@@ -616,7 +625,7 @@ static duk_ret_t do_print(duk_context *ctx)
         ret = 0;
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_print()=%d", ret)
     return ret;
 }
 
@@ -633,6 +642,8 @@ static duk_ret_t do_setHTTPStatus(duk_context * ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
 
+    JSE_ENTER("do_setHTTPStatus(%p)", ctx)
+
     if (duk_is_number(ctx, -1))
     {
         http_status = (int)duk_get_int_default(ctx, -1, HTTP_STATUS_OK);
@@ -648,7 +659,7 @@ static duk_ret_t do_setHTTPStatus(duk_context * ctx)
         JSE_THROW_TYPE_ERROR(ctx, "Invalid argument!");
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_setHTTPStatus()=%d", ret)
     return ret;
 }
 
@@ -664,6 +675,8 @@ static duk_ret_t do_setHTTPStatus(duk_context * ctx)
 static duk_ret_t do_setContentType(duk_context * ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
+
+    JSE_ENTER("do_setContentType(%p)", ctx)
 
     if (duk_is_string(ctx, -1))
     {
@@ -695,7 +708,7 @@ static duk_ret_t do_setContentType(duk_context * ctx)
         JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"mimetype\"!");
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_setContentType()=%d", ret)
     return ret;
 }
 
@@ -718,6 +731,8 @@ static duk_ret_t do_setCookie(duk_context * ctx)
     char * path = NULL;
     char * domain = NULL;
     bool secure = false;
+
+    JSE_ENTER("do_setCookie(%p)", ctx)
 
     if (duk_is_string(ctx, -6))
     {
@@ -836,7 +851,7 @@ static duk_ret_t do_setCookie(duk_context * ctx)
         http_cookie.domain !=NULL ? http_cookie.domain : "(null)",
         http_cookie.secure ? "true" : "false")
 
-    JSE_VERBOSE("ret=0")
+    JSE_EXIT("do_setCookie()=0")
     return 0;
 }
 
@@ -856,6 +871,8 @@ static duk_ret_t do_setHeader(duk_context * ctx)
     duk_ret_t ret = DUK_RET_ERROR;
     char * name = NULL;
     char * value = NULL;
+
+    JSE_ENTER("do_setHeader(%p)", ctx)
 
     if (duk_is_string(ctx, -2))
     {
@@ -917,7 +934,7 @@ static duk_ret_t do_setHeader(duk_context * ctx)
         JSE_THROW_TYPE_ERROR(ctx, "Invalid argument \"name\" (%d)", duk_get_type(ctx, -2));
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_setHeader()=%d", ret)
     return ret;
 }
 
@@ -931,8 +948,8 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
 {
     duk_int_t ret = 0;
 
-    JSE_VERBOSE("bind_functions()")
     JSE_ASSERT(jse_ctx != NULL)
+    JSE_ENTER("bind_functions(%p)", jse_ctx)
 
     /* Bind built ins */
     duk_push_c_function(jse_ctx->ctx, do_print, 1);
@@ -970,6 +987,8 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
         JSE_ERROR("Failed to bind cosa functions!")
     }
 #endif
+
+    JSE_EXIT("bind_functions()=%d", ret)
     return ret;
 }
 
@@ -1027,7 +1046,7 @@ static void create_request_object_params(duk_context *ctx, qentry_t *req, duk_in
     duk_idx_t idx2;
     char *propName;
 
-    JSE_VERBOSE("create_request_object_params(%p, %p, %d)", ctx, req, idx)
+    JSE_ENTER("create_request_object_params(%p, %p, %d)", ctx, req, idx)
 
     memset(&obj, 0, sizeof(obj));
 
@@ -1135,6 +1154,8 @@ static void create_request_object_params(duk_context *ctx, qentry_t *req, duk_in
     }
 
     duk_put_prop_string(ctx, idx, "QueryParameters");
+
+    JSE_EXIT("create_request_object_params()")
 }
 
 static void create_request_object_envs(duk_context *ctx, duk_int_t idx)
@@ -1216,7 +1237,7 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
 {
     duk_int_t ret = DUK_ERR_ERROR;
 
-    JSE_VERBOSE("handle_request()")
+    JSE_ENTER("handle_request(%p)", jse_ctx)
 
     ret = bind_functions(jse_ctx); 
     if (ret == 0)
@@ -1335,6 +1356,7 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
         JSE_ERROR("bind_functions() failed!")
     }
 
+    JSE_EXIT("handle_request()=%d", ret)
     return ret;
 }
 
@@ -1463,7 +1485,7 @@ int main(int argc, char **argv)
 
     if (optind < argc)
     {
-        JSE_DEBUG("Filename: %s", argv[optind])
+        JSE_DEBUG("Filename: \"%s\"", argv[optind])
         filename = strdup(argv[optind++]);
         if (filename == NULL)
         {
@@ -1591,12 +1613,12 @@ int main(int argc, char **argv)
         }
     }
 #endif
-	
-    JSE_VERBOSE("main loop...")
 
 #ifdef ENABLE_FASTCGI
     while (FCGI_Accept() >= 0)
     {
+        JSE_INFO("FCGI loop start")
+
         /* For Fast CGI get the script file name from the environment */
         char *filenameenv = getenv("SCRIPT_FILENAME");
         if (filenameenv == NULL)
@@ -1606,6 +1628,7 @@ int main(int argc, char **argv)
             basic_return_error(HTTP_STATUS_INTERNAL_SERVER_ERROR);
             continue;
         }
+
 
         /* Need a copy of the string - will be freed by jse_context_destroy */
         filename = strdup(filenameenv);
@@ -1641,6 +1664,7 @@ int main(int argc, char **argv)
             ret = 0;
         }
 #ifdef ENABLE_FASTCGI
+        JSE_INFO("FCGI loop end")
     }
 #endif
 

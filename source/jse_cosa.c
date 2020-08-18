@@ -474,6 +474,7 @@ static duk_ret_t getStr(duk_context *ctx)
     char subSystemPrefix[6] = {0};
 
     JSE_ASSERT(ctx != NULL)
+    JSE_ENTER("getStr(%p)", ctx)
 
     /* Parse Input parameters first */
     if (parse_parameter(__FUNCTION__, ctx, "s", &dotstr) != 0)
@@ -482,11 +483,13 @@ static duk_ret_t getStr(duk_context *ctx)
     }
     else
     {
+        JSE_VERBOSE("dotstr=\"%s\"", dotstr)
+
         /* Check whether there are subsystem prefix in the dot string
            Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
-        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
+        JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
 
         /* Get Destination component */
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
@@ -494,7 +497,7 @@ static duk_ret_t getStr(duk_context *ctx)
         {
             /* Does not return */
             JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                "Failed on UiDbusClientGetDestComponent %s", dotstr);
+                "UiDbusClientGetDestComponent() failed: \"%s\"", dotstr);
         }
         else
         {
@@ -511,19 +514,21 @@ static duk_ret_t getStr(duk_context *ctx)
             {
                 /* Does not return */
                 JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                    "Failed on CcspBaseIf_getParameterValues %s", dotstr);
+                    "CcspBaseIf_getParameterValues() failed: \"%s\"", dotstr);
             }
             else
             {
                 JSE_DEBUG(
-                    "CcspBaseIf_getParameterValues: %s, result %s",
-                    dotstr,
+                    "parameterVal[0]->parameterValue=\"%s\"",
                     parameterVal[0]->parameterValue)
 
                 if (size >= 1)
                 {
                     strncpy(retParamVal, parameterVal[0]->parameterValue, sizeof(retParamVal));
                 }
+
+                JSE_VERBOSE("retParamVal=\"%s\"", retParamVal)
+
                 /* Return only first param value */
                 duk_push_string(ctx, retParamVal);
 
@@ -534,8 +539,7 @@ static duk_ret_t getStr(duk_context *ctx)
         }
     }
 
-    JSE_VERBOSE("string=%s, ret=%d", retParamVal, ret)
-
+    JSE_EXIT("getStr()=%d", ret)
     return ret;
 }
 
@@ -571,6 +575,7 @@ static duk_ret_t setStr(duk_context *ctx)
     dbus_bool bDbusCommit = 1;
 
     JSE_ASSERT(ctx != NULL)
+    JSE_ENTER("setStr(%p)", ctx)
 
     /* Parse Parameters first */
     if (parse_parameter(__FUNCTION__, ctx, "ssb", &dotstr, &val, &bCommit) != 0)
@@ -579,13 +584,15 @@ static duk_ret_t setStr(duk_context *ctx)
     }
     else
     {
+        JSE_VERBOSE("dotstr=\"%s\",val=\"%s\",bCommit=%s", dotstr, val, bCommit ? "true" : "false")
+
         bDbusCommit = (bCommit) ? 1 : 0;
 
         /* Check whether there is subsystem prefix in the dot string
            Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
-        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
+        JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
 
         /* Get Destination component */
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
@@ -593,7 +600,7 @@ static duk_ret_t setStr(duk_context *ctx)
         {
             /* Does not return */
             JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                "Failed on UiDbusClientGetDestComponent %s", dotstr);
+                "UiDbusClientGetDestComponent() failed: \"%s\"", dotstr);
         }
         else
         {
@@ -609,18 +616,18 @@ static duk_ret_t setStr(duk_context *ctx)
             {
                 /* Does not return */
                 JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                    "Failed on CcspBaseIf_getParameterValues %s", dotstr);
+                    "CcspBaseIf_getParameterValues() failed: \"%s\"", dotstr);
             }
             else
             {
                 JSE_DEBUG(
-                    "setStr - CcspBaseIf_getParameterValues: %s, result %s!",
+                    "structGet[0]->parameterName=\"%s\", structGet[0]->parameterValue=\"%s\"",
                     structGet[0]->parameterName,
                     structGet[0]->parameterValue)
 
                 if (size != 1 || strcmp(structGet[0]->parameterName, dotstr) != 0)
                 {
-                    JSE_ERROR("%s: miss match", __FUNCTION__)
+                    JSE_ERROR("Miss match!")
                 }
                 else
                 {
@@ -643,7 +650,7 @@ static duk_ret_t setStr(duk_context *ctx)
                     {
                         /* Does not return */
                         JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                            "CcspBaseIf_setParameterValues failed - %s:%s bCommit:%d",
+                            "CcspBaseIf_setParameterValues() failed: \"%s\" \"%s\" %d",
                             dotstr,
                             structSet[0].parameterValue,
                             bDbusCommit);
@@ -651,7 +658,7 @@ static duk_ret_t setStr(duk_context *ctx)
                     else
                     {
                         JSE_DEBUG(
-                            "CcspBaseIf_setParameterValues - %s:%s bCommit:%d.",
+                            "dotstr=\"%s\", structSet[0].parameterValue=\"%s\", bDbusCommit=%d",
                             dotstr,
                             structSet[0].parameterValue,
                             bDbusCommit);
@@ -669,6 +676,7 @@ static duk_ret_t setStr(duk_context *ctx)
         }
     }
 
+    JSE_EXIT("setStr()=%d", ret)
     return ret;
 }
 
@@ -697,6 +705,7 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
     char subSystemPrefix[6] = {0};
 
     JSE_ASSERT(ctx != NULL)
+    JSE_ENTER("getInstanceIds(%p)", ctx)
 
     if (DUK_EXEC_SUCCESS != parse_parameter(__FUNCTION__, ctx, "s", &dotstr))
     {
@@ -704,11 +713,13 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
     }
     else
     {
+        JSE_VERBOSE("dotstr=\"%s\"", dotstr)
+
         /* Check whether there are subsystem prefix in the dot string
            Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
-        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
+        JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
 
         /* Get Destination component */
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
@@ -716,7 +727,7 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
         {
             /* Does not return */
             JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                "Failed on UiDbusClientGetDestComponent %s", dotstr);
+                "UiDbusClientGetDestComponent() failed: \"%s\"", dotstr);
         }
         else
         {
@@ -734,7 +745,7 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
             {
                 /* Does not return */
                 JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                    "Failed on CcspBaseIf_GetNextLevelInstances");
+                    "CcspBaseIf_GetNextLevelInstances() failed");
             }
             else
             {
@@ -755,6 +766,8 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
             }
         }
     }
+
+    JSE_EXIT("getInstanceIds()=%d", ret)
     return ret;
 }
 
@@ -779,6 +792,7 @@ static duk_ret_t addTblObj(duk_context *ctx)
     char subSystemPrefix[6] = {0};
 
     JSE_ASSERT(ctx != NULL)
+    JSE_ENTER("addTblObj(%p)", ctx)
 
     if (parse_parameter(__FUNCTION__, ctx, "s", &dotstr) != 0)
     {
@@ -786,19 +800,21 @@ static duk_ret_t addTblObj(duk_context *ctx)
     }
     else
     {
+        JSE_VERBOSE("dotstr=\"%s\"", dotstr)
+
         /* Check whether there are subsystem prefix in the dot string
            Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
-        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
+        JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
 
         /* Get Destination component */
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
         if (returnStatus != 0)
         {
             /* Does not return */
-                JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                    "Failed on UiDbusClientGetDestComponent %s", dotstr);
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "UiDbusClientGetDestComponent() failed: \"%s\"", dotstr);
         }
         else
         {
@@ -815,7 +831,7 @@ static duk_ret_t addTblObj(duk_context *ctx)
             {
                 /* Does not return */
                 JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                    "addTblObj - CcspBaseIf_AddTblRow failed on %s", dotstr);
+                    "CcspBaseIf_AddTblRow() failed: \"%s\"", dotstr);
             }
             else
             {
@@ -827,6 +843,7 @@ static duk_ret_t addTblObj(duk_context *ctx)
         }
     }
 
+    JSE_EXIT("addTblObj()=%d", ret)
     return ret;
 }
 
@@ -850,6 +867,7 @@ static duk_ret_t delTblObj(duk_context *ctx)
     char subSystemPrefix[6] = {0};
 
     JSE_ASSERT(ctx != NULL)
+    JSE_ENTER("delTblObj(%p)", ctx)
 
     if (parse_parameter(__FUNCTION__, ctx, "s", &dotstr) != 0)
     {
@@ -857,11 +875,13 @@ static duk_ret_t delTblObj(duk_context *ctx)
     }
     else
     {
+        JSE_VERBOSE("dotstr=\"%s\"", dotstr)
+
         /* Check whether there are subsystem prefix in the dot string
            Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
-        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
+        JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
 
         // Get Destination component
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
@@ -869,7 +889,7 @@ static duk_ret_t delTblObj(duk_context *ctx)
         {
             /* Does not return */
             JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                "Failed on UiDbusClientGetDestComponent %s", dotstr);
+                "UiDbusClientGetDestComponent() failed: \"%s\"", dotstr);
         }
         else
         {
@@ -885,7 +905,7 @@ static duk_ret_t delTblObj(duk_context *ctx)
             {
                 /* Does not return */
                 JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                    "delTblObj - CcspBaseIf_DeleteTblRow failed on %s", dotstr);
+                    "CcspBaseIf_DeleteTblRow() failed: \"%s\"", dotstr);
             }
             else
             {
@@ -895,6 +915,7 @@ static duk_ret_t delTblObj(duk_context *ctx)
         }
     }
 
+    JSE_EXIT("delTblObj()=%d", ret)
     return ret;
 }
 
@@ -928,6 +949,7 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
     parameterValStruct_t **ppParameterVal = NULL;
 
     JSE_ASSERT(ctx != NULL)
+    JSE_ENTER("DmExtGetStrsWithRootObj(%p)", ctx)
 
     /* Parse paremeters */
     if (parse_parameter(__FUNCTION__, ctx, "so", &pRootObjName, &pParamNameArray) != 0)
@@ -936,11 +958,13 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
     }
     else
     {
+        JSE_VERBOSE("pRootObjName=\"%s\"", pRootObjName)
+
         /* Check whether there is subsystem prefix in the dot string
         Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&pRootObjName, subSystemPrefix);
 
-        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
+        JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
 
         /*
         *  Get Destination component for root obj name
@@ -949,12 +973,12 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
         if (returnStatus != 0)
         {
             /* Does not return */
-                    JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                        "Failed on UiDbusClientGetDestComponent %s", pRootObjName);
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "UiDbusClientGetDestComponent() failed: \"%s\"", pRootObjName);
         }
         else
         {
-            JSE_DEBUG("DmExtGetStrsWithRootObj -- RootObjName: %s, destination component: %s, %s\n",
+            JSE_DEBUG("pRootObjName=\"%s\", pDestComponentName\"%s\", pDestPath=\"%s\"\n",
                 pRootObjName, pDestComponentName, pDestPath)
         }
 
@@ -963,13 +987,13 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
         */
         paramCount = get_array_length(ctx, pParamNameArray);
 
-        JSE_VERBOSE("Name list count %d:\n", paramCount)
+        JSE_VERBOSE("paramCount=%d", paramCount)
 
         ppParamNameList = (char **)calloc(paramCount, sizeof(char *));
         if (ppParamNameList == NULL)
         {
             /* Does not return */
-            JSE_THROW_POSIX_ERROR(ctx, errno, "ppParamNameList: %s", strerror(errno));
+            JSE_THROW_POSIX_ERROR(ctx, errno, "calloc() failed: %s", strerror(errno));
         }
 
         index = 0;
@@ -983,7 +1007,7 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
             if (value)
             {
                 ppParamNameList[index] = value;
-                JSE_VERBOSE("  %s", ppParamNameList[index])
+                JSE_VERBOSE("ppParamNameList[%d]=\"%s\"", index, ppParamNameList[index])
                 index++;
             }
 #ifdef JSE_DEBUG
@@ -992,16 +1016,16 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
                 if (duk_get_type(ctx, -2) == DUK_TYPE_NUMBER)
                 {
                     unsigned int key = duk_get_uint(ctx, -2);
-                    JSE_VERBOSE("  Item %u is null!", key);
+                    JSE_VERBOSE("Item %u is null!", key);
                 }
                 else if (duk_get_type(ctx, -2) == DUK_TYPE_STRING)
                 {
                     const char * key = duk_get_string(ctx, -2);
-                    JSE_VERBOSE("  Item \'%s\' is null!", key);
+                    JSE_VERBOSE("Item \"%s\" is null!", key);
                 }
                 else
                 {
-                    JSE_VERBOSE("  Item with unrecognised key is null!");
+                    JSE_VERBOSE("Item with unrecognised key is null!");
                 }
             }
 #endif
@@ -1024,7 +1048,7 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
         {
             free(ppParamNameList);
             /* Does not return */
-            JSE_THROW_COSA_ERROR(ctx, returnStatus, "Failed on CcspBaseIf_getParameterValues");
+            JSE_THROW_COSA_ERROR(ctx, returnStatus, "CcspBaseIf_getParameterValues() failed");
         }
         else
         {
@@ -1041,7 +1065,10 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
             for (index = 0; index < valCount; index++)
             {
                 duk_idx_t sub_idx;
-                JSE_VERBOSE("  %s = %s", ppParameterVal[index]->parameterName, ppParameterVal[index]->parameterValue)
+                JSE_VERBOSE(
+                    "ppParameterVal[%d]->parameterName=\"%s\", ppParameterVal[%d]->parameterValue=\"%s\"",
+                    index, ppParameterVal[index]->parameterName,
+                    index, ppParameterVal[index]->parameterValue)
 
                 sub_idx = duk_push_array(ctx);
                 duk_push_string(ctx, ppParameterVal[index]->parameterName);
@@ -1063,6 +1090,7 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
         }
     }
 
+    JSE_EXIT("DmExtGetStrsWithRootObj()=%d", ret)
     return ret;
 }
 
@@ -1100,6 +1128,7 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
     char *pFaultParamName = NULL;
 
     JSE_ASSERT(ctx != NULL)
+    JSE_ENTER("DmExtSetStrsWithRootObj(%p)", ctx)
 
     /* Parse paremeters */
     if (parse_parameter(__FUNCTION__, ctx, "sbo", &pRootObjName, &bCommit, &pParamArray) != 0)
@@ -1108,13 +1137,15 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
     }
     else
     {
+        JSE_VERBOSE("pRootObjName=\"%s\", bCommit=%s", pRootObjName, bCommit ? "true" : "false")
+
         bDbusCommit = (bCommit) ? 1 : 0;
 
         /* Check whether there is subsystem prefix in the dot string
         Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&pRootObjName, subSystemPrefix);
 
-        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
+        JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
 
         /*
         *  Get Destination component for root obj name
@@ -1124,12 +1155,12 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
         {
             /* Does not return */
             JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                "Failed on UiDbusClientGetDestComponent %s, error code = %d", pRootObjName);
+                "UiDbusClientGetDestComponent() failed: \"%s\"", pRootObjName);
         }
         else
         {
             JSE_DEBUG(
-                "DmExtSetStrsWithRootObj -- RootObjName: %s, bCommit: %d, destination component: %s, %s\n",
+                "pRootObjName=\"%s\", bDbusCommit=%d, pDestComponentName=\"%s\", pDestPath=\"%s\"\n",
                 pRootObjName,
                 bDbusCommit,
                 pDestComponentName,
@@ -1141,13 +1172,13 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
         */
         paramCount = get_array_length(ctx, pParamArray);
 
-        JSE_VERBOSE("Parameter list count: %d", paramCount)
+        JSE_VERBOSE("paramCount=%d", paramCount)
 
         pParameterValList = (parameterValStruct_t *)calloc(paramCount, sizeof(parameterValStruct_t));
         if (pParameterValList == NULL)
         {
             /* Does not return */
-            JSE_THROW_POSIX_ERROR(ctx, errno, "pParameterValList: %s", strerror(errno));
+            JSE_THROW_POSIX_ERROR(ctx, errno, "calloc() failed: %s", strerror(errno));
         }
 
         index = 0;
@@ -1165,14 +1196,15 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
             {
                 free(pParameterValList);
                 /* Does not return */
-                JSE_THROW_TYPE_ERROR(ctx, "Item is not ARRAY!");
+                JSE_THROW_TYPE_ERROR(ctx, "Item is not an array!");
             }
             else if (get_array_length(ctx, -1) != 3)
             {
                 free(pParameterValList);
                 /* Does not return */
                 JSE_THROW_RANGE_ERROR(ctx,
-                    "Subarray count is supposed to be 3, actual value = %d!!!", get_array_length(ctx, -1));
+                    "Invalid sub-array size (%d)",
+                    get_array_length(ctx, -1));
             }
             else
             {
@@ -1182,7 +1214,10 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
                 {
                     /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
                     pParameterValList[index].parameterName = (char *)duk_get_string(ctx, -1);
-                    JSE_VERBOSE("  Param name %s", pParameterValList[index].parameterName)
+
+                    JSE_VERBOSE("pParameterValList[%d].parameterName=\"%s\"",
+                        index, pParameterValList[index].parameterName)
+
                     /* pop name k/v */
                     duk_pop_2(ctx);
 
@@ -1240,7 +1275,9 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
                             pParameterValList[index].type = ccsp_byte;
                         }
 
-                        JSE_VERBOSE("  Param type %d->%s", pParameterValList[index].type, pTemp)
+                        JSE_VERBOSE("pParameterValList[%d].type=%d, pTemp=\"%s\"",
+                            index, pParameterValList[index].type, pTemp)
+
                         /* pop type k/v */
                         duk_pop_2(ctx);
 
@@ -1263,7 +1300,9 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
                                     pParameterValList[index].parameterValue = BoolStrBuf;
                                 }
                             }
-                            JSE_VERBOSE("  Param Value %s\n", pParameterValList[index].parameterValue)
+                            JSE_VERBOSE("pParameterValList[%d].parameterValue=\"%s\"\n",
+                                index, pParameterValList[index].parameterValue)
+
                             /* pop value k/v */
                             duk_pop_2(ctx);
                         }
@@ -1320,19 +1359,17 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
 
             /* Does not return */
             JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                "CcspBaseIf_setParameterValues failed, bDbusCommit:%d, pFaultParamName: %s",
-                bDbusCommit,
-                faultParamName);
+                "CcspBaseIf_setParameterValues() failed: %d: %s",
+                bDbusCommit, faultParamName);
         }
         else
         {
-            JSE_DEBUG("CcspBaseIf_setParameterValues succeeded!\n")
-
             /* Return nothing (undefined) */
             ret = 0;
         }
     }
 
+    JSE_EXIT("DmExtSetStrsWithRootObj()=%d", ret)
     return ret;
 }
 
@@ -1361,6 +1398,7 @@ static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
     unsigned int index = 0;
 
     JSE_ASSERT(ctx != NULL)
+    JSE_ENTER("DmExtGetInstanceIds(%p)", ctx)
 
     if (parse_parameter(__FUNCTION__, ctx, "s", &dotstr) != 0)
     {
@@ -1368,11 +1406,13 @@ static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
     }
     else
     {
+        JSE_VERBOSE("dotstr=\"%s\"", dotstr)
+
         /* Check whether there are subsystem prefix in the dot string
            Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
         CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
 
-        JSE_VERBOSE("subSystemPrefix = %s", subSystemPrefix)
+        JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
 
         // Get Destination component
         returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
@@ -1380,11 +1420,11 @@ static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
         {
             /* Does not return */
             JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                "Failed on UiDbusClientGetDestComponent %s", dotstr);
+                "UiDbusClientGetDestComponent() failed: \"%s\"", dotstr);
         }
         else
         {
-            JSE_DEBUG("DmExtGetInstanceIds -- ObjectTable: %s, destination component: %s, %s",
+            JSE_DEBUG("dotstr=\"%s\", ppDestComponentName=\"%s\", ppDestPath=\"%s\"",
                 dotstr, ppDestComponentName, ppDestPath)
         }
 
@@ -1406,7 +1446,8 @@ static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
             free(pInstNumList);
 
             /* Does not return */
-            JSE_THROW_COSA_ERROR(ctx, returnStatus, "Failed on CcspBaseIf_GetNextLevelInstances");
+            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                "CcspBaseIf_GetNextLevelInstances() failed");
         }
         else
         {
@@ -1416,14 +1457,15 @@ static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
             duk_push_int(ctx, 0);
             duk_put_prop_index(ctx, arr_idx, 0);
 
-            JSE_VERBOSE("%d of returned values:", InstNum)
+            JSE_VERBOSE("InstNum=%d", InstNum)
 
             for (index = 0; index < InstNum; index++)
             {
                 snprintf(StrBuf, sizeof(StrBuf), "%d", pInstNumList[index]);
                 duk_push_string(ctx, StrBuf);
                 duk_put_prop_index(ctx, arr_idx, index + 1);
-                JSE_VERBOSE("Instance %d: %s", index, StrBuf)
+
+                JSE_VERBOSE("Index %d: \"%s\"", index, StrBuf)
             }
 
             /* Per C99 free(NULL) is a NOP */
@@ -1434,6 +1476,7 @@ static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
         }
     }
 
+    JSE_EXIT("DmExtGetInstanceIds()=%d", ret)
     return ret;
 }
 
@@ -1459,7 +1502,7 @@ duk_int_t jse_bind_cosa(jse_context_t* jse_ctx)
 {
     duk_int_t ret = DUK_ERR_ERROR;
 
-    JSE_VERBOSE("Binding Cosa!")
+    JSE_ENTER("jse_bind_cosa(%p)", jse_ctx)
 
     JSE_VERBOSE("ref_count=%d", ref_count)
     if (jse_ctx != NULL)
@@ -1483,7 +1526,7 @@ duk_int_t jse_bind_cosa(jse_context_t* jse_ctx)
         }
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("jse_bind_cosa()=%d", ret)
     return ret;
 }
 
@@ -1499,10 +1542,14 @@ duk_int_t jse_bind_cosa(jse_context_t* jse_ctx)
  */
 void jse_unbind_cosa(jse_context_t * jse_ctx)
 {
+    JSE_ENTER("jse_unbind_cosa(%p)", jse_ctx)
+
     ref_count --;
     JSE_VERBOSE("ref_count=%d", ref_count)
 
     /* TODO: Actually unbind */
 
     jse_unbind_cosa_error(jse_ctx);
+
+    JSE_EXIT("jse_unbind_cosa()")
 }

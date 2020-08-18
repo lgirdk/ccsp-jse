@@ -216,7 +216,8 @@ ssize_t jse_read_file(const char * const filename, char ** const pbuffer, size_t
         goto error2;
     }
 
-    JSE_DEBUG("Opening: %s", filename)
+    JSE_ENTER("jse_read_file(\"%s\", %p, %p)", filename, pbuffer, psize)
+
     fd = open(filename, O_RDONLY);
     if (fd == -1)
     {
@@ -289,6 +290,7 @@ done:
     *pbuffer = buffer;
     *psize = size;
 
+    JSE_EXIT("jse_read_file()=%d", size)
     return size;
 
 error:
@@ -303,6 +305,7 @@ error:
     }
 
 error2:
+    JSE_EXIT("jse_read_file()=-1")
     return -1;
 }
 

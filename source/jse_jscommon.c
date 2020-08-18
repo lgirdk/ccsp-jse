@@ -31,6 +31,8 @@ static duk_int_t run_buffer(duk_context * ctx, const char * buffer, size_t size,
     JSE_ASSERT(buffer != NULL)
     JSE_ASSERT(size != 0)
 
+    JSE_ENTER("run_buffer(%p,%p,%u,\"%s\")", ctx, buffer, size, filename)
+
     if (filename != NULL)
     {
         duk_push_string(ctx, filename);
@@ -64,7 +66,7 @@ static duk_int_t run_buffer(duk_context * ctx, const char * buffer, size_t size,
     } 
 
     /* In case of error, an Error() object is left on the stack */
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("run_buffer()=%d", ret)
     return ret;
 }
 
@@ -80,6 +82,8 @@ duk_int_t jse_run_buffer(jse_context_t * jse_ctx, const char * buffer, size_t si
 {
     duk_int_t ret = DUK_EXEC_ERROR;
 
+    JSE_ENTER("jse_run_buffer(%p,%p,%u)", jse_ctx, buffer, size)
+
     if (jse_ctx != NULL && buffer != NULL && size != 0)
     {
         ret = run_buffer(jse_ctx->ctx, buffer, size, jse_ctx->filename);
@@ -89,7 +93,7 @@ duk_int_t jse_run_buffer(jse_context_t * jse_ctx, const char * buffer, size_t si
         JSE_ERROR("Invalid arguments!")
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("jse_run_buffer()=%d", ret)
     return ret;
 }
 
@@ -109,7 +113,7 @@ static duk_ret_t do_include(duk_context * ctx)
 
     JSE_ASSERT(ctx != NULL)
 
-    JSE_VERBOSE("do_include()")
+    JSE_ENTER("do_include(%p)", ctx)
 
     if (!duk_is_string(ctx, -1))
     {
@@ -160,7 +164,7 @@ static duk_ret_t do_include(duk_context * ctx)
         }
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_include()=%d", ret)
     return ret;
 }
 
@@ -186,7 +190,7 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
     int level = JSE_DEBUG_LEVEL_DEBUG;
     int line = 0;
 
-    JSE_VERBOSE("do_debugPrint()")
+    JSE_ENTER("do_debugPrint(%p)", ctx)
 
     /* Must have at least one argument */
     if (count == 0)
@@ -254,6 +258,7 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
     }
 #endif
 
+    JSE_EXIT("debugPrint()=0")
     return 0;
 }
 
@@ -274,7 +279,7 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
     size_t size = 0;
     ssize_t bytes = 0;
 
-    JSE_VERBOSE("do_read_file_as_string()")
+    JSE_ENTER("do_read_file_as_string(%p)", ctx)
 
     if (!duk_is_string(ctx, -1))
     {
@@ -327,7 +332,7 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
         }
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_read_file_as_string()=%d", ret)
     return ret;
 }
 
@@ -347,7 +352,7 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
     duk_int_t count = duk_get_top(ctx);
     const char * filename = NULL;
 
-    JSE_VERBOSE("do_write_as_file()")
+    JSE_ENTER("do_write_as_file(%p)", ctx)
 
     if (count < 2)
     {
@@ -421,7 +426,7 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
         }
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_write_as_file()=%d", ret)
     return ret;
 }
 
@@ -438,7 +443,7 @@ static duk_ret_t do_remove_file(duk_context * ctx)
     duk_ret_t ret = DUK_RET_ERROR;
     const char * filename = NULL;
 
-    JSE_VERBOSE("do_read_file_as_string()")
+    JSE_ENTER("do_remove_file(%p)", ctx)
 
     if (!duk_is_string(ctx, -1))
     {
@@ -465,6 +470,7 @@ static duk_ret_t do_remove_file(duk_context * ctx)
         }
     }
 
+    JSE_EXIT("do_remove_file()=%d", ret)
     return ret;
 }
 
@@ -483,7 +489,7 @@ static duk_ret_t do_list_directory(duk_context * ctx)
     duk_ret_t ret = DUK_RET_ERROR;
     const char * dirname = NULL;
 
-    JSE_VERBOSE("do_list_directory()")
+    JSE_ENTER("do_list_directory(%p)", ctx)
 
     if (!duk_is_string(ctx, -1))
     {
@@ -501,6 +507,8 @@ static duk_ret_t do_list_directory(duk_context * ctx)
         else
         {
             struct stat s;
+
+            JSE_VERBOSE("dirname=%s", dirname)
 
             if (stat(dirname, &s) != 0)
             {
@@ -562,6 +570,7 @@ static duk_ret_t do_list_directory(duk_context * ctx)
         }
     }
 
+    JSE_EXIT("do_list_directory()=%d", ret)
     return ret;
 }
 
@@ -577,9 +586,14 @@ duk_ret_t do_sleep(duk_context * ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
 
+    JSE_ENTER("do_sleep(%p)", ctx)
+
     if (duk_is_number(ctx, -1))
     {
         unsigned int delay = (unsigned int)duk_get_uint_default(ctx, -1, 0);
+
+        JSE_VERBOSE("delay=%u", delay)
+
         do
         {
             delay = sleep(delay);
@@ -594,7 +608,7 @@ duk_ret_t do_sleep(duk_context * ctx)
         JSE_THROW_TYPE_ERROR(ctx, "Invalid argument!");
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_sleep()=%d", ret)
     return ret;
 }
 
@@ -610,12 +624,16 @@ duk_ret_t do_usleep(duk_context * ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
 
+    JSE_ENTER("do_usleep(%p)", ctx)
+
     if (duk_is_number(ctx, -1))
     {
         unsigned int delay = (unsigned int)duk_get_uint_default(ctx, -1, 0);
         struct timespec req;
         struct timespec rem;
         int err = -1;
+
+        JSE_VERBOSE("delay=%u", delay)
 
         req.tv_sec  = (delay / 1000000);
         req.tv_nsec = (delay % 1000000) * 1000;
@@ -642,7 +660,7 @@ duk_ret_t do_usleep(duk_context * ctx)
         JSE_THROW_TYPE_ERROR(ctx, "Invalid argument!");
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("do_usleep()=%d", ret)
     return ret;
 }
 
@@ -656,7 +674,7 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
 {
     duk_int_t ret = DUK_ERR_ERROR;
 
-    JSE_VERBOSE("Binding JS common!")
+    JSE_ENTER("jse_bind_jscommon(%p)", jse_ctx)
 
     JSE_VERBOSE("ref_count=%d", ref_count)
     if (jse_ctx != NULL)
@@ -700,7 +718,7 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
         }
     }
 
-    JSE_VERBOSE("ret=%d", ret)
+    JSE_EXIT("jse_bind_jscommon()=%d", ret)
     return ret;
 }
 
@@ -716,10 +734,14 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
  */
 void jse_unbind_jscommon(jse_context_t * jse_ctx)
 {
+    JSE_ENTER("jse_unbind_jscommon(%p)", jse_ctx)
+
     ref_count --;
     JSE_VERBOSE("ref_count=%d", ref_count)
 
     /* TODO: Actually unbind */
 
     jse_unbind_jserror(jse_ctx);
+
+    JSE_EXIT("jse_unbind_jscommon()")
 }
