@@ -105,25 +105,24 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
         }
         else
         {
-            char * newbuf = NULL;
+            size = off;
 
-            /* For nul terminator */
-            size = off + 1;
-
-            /* Resize the string for the contents to fit. */
-            newbuf = (char*)realloc(buffer, size);
-            if (newbuf == NULL)
+            /* Do NOT resize to zero bytes (as that's a free) */
+            if (size > 0)
             {
-                JSE_ERROR("realloc() failed: %s", strerror(errno));
-                bytes = -1;
-            }
-            else
-            {
-                buffer = newbuf;
+                char * newbuf = NULL;
 
-                /* nul character to terminate string, will be
-                   overwritten next pass. */
-                *(buffer + off) = '\0';
+                /* Resize the string for the contents to fit. */
+                newbuf = (char*)realloc(buffer, size);
+                if (newbuf == NULL)
+                {
+                    JSE_ERROR("realloc() failed: %s", strerror(errno));
+                    bytes = -1;
+                }
+                else
+                {
+                    buffer = newbuf;
+                }
             }
         }
     }
@@ -133,6 +132,8 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
         *pbuffer = buffer;
         *poff = off;
         *psize = size;
+
+        JSE_VERBOSE("buffer=%p, off=%u, size=%u", buffer, off, size)
     }
 
     return bytes;
