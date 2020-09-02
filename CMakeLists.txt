@@ -26,6 +26,7 @@ enable_testing()
 
 option(BUILD_RDK "BUILD_RDK" OFF)
 option(ENABLE_LIBXML2 "ENABLE_LIBXML2" OFF)
+option(ENABLE_LIBCRYPTO "ENABLE_LIBCRYPTO" OFF)
 option(FAST_CGI "FAST_CGI" OFF)
 
 # default to Release build
@@ -58,6 +59,13 @@ if(ENABLE_LIBXML2)
     -DENABLE_LIBXML2 \
     -I/usr/include/libxml2")
 endif(ENABLE_LIBXML2)
+
+if(ENABLE_LIBCRYPTO)
+  set (CMAKE_C_FLAGS
+    "${CMAKE_C_FLAGS} \
+    -DENABLE_LIBCRYPTO \
+    -I/usr/include/openssl")
+endif(ENABLE_LIBCRYPTO)
 
 # in keeping with the small footprint goal, optimize for size (-Os)
 set(CMAKE_C_FLAGS_RELEASE "-Os")
@@ -95,6 +103,13 @@ if(ENABLE_LIBXML2)
     source/jse_xml.c)
   set(JSE_LIBS "${JSE_LIBS} -lxml2")
 endif(ENABLE_LIBXML2)
+
+if(ENABLE_LIBCRYPTO)
+  set(JSE_SOURCES
+    ${JSE_SOURCES}
+    source/jse_crypt.c)
+  set(JSE_LIBS "${JSE_LIBS} -lcrypto")
+endif(ENABLE_LIBCRYPTO)
 
 add_executable(jse ${JSE_SOURCES})
 target_link_libraries(jse ${JSE_LIBS})

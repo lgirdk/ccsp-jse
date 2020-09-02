@@ -30,6 +30,10 @@
 #include "jse_cosa.h"
 #endif
 
+#ifdef ENABLE_LIBCRYPTO
+#include "jse_crypt.h"
+#endif
+
 #define MAX_SCRIPT_SIZE JSE_MAX_FILE_SIZE
 #define EXIT_FATAL 3
 
@@ -1022,6 +1026,12 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
         JSE_ERROR("Failed to bind cosa functions!")
     }
 #endif
+#ifdef ENABLE_LIBCRYPTO
+    else if ((ret = jse_bind_crypt(jse_ctx)) != 0)
+    {
+        JSE_ERROR("Failed to bind xml functions!")
+    }
+#endif
 
     JSE_EXIT("bind_functions()=%d", ret)
     return ret;
@@ -1034,6 +1044,9 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
  */
 static void unbind_functions(jse_context_t *jse_ctx)
 {
+#ifdef ENABLE_LIBCRYPTO
+    jse_unbind_crypt(jse_ctx);
+#endif
 #ifdef BUILD_RDK
     jse_unbind_cosa(jse_ctx);
 #endif
