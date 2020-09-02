@@ -22,8 +22,13 @@
 #include "jse_jserror.h"
 #include "jse_jsprocess.h"
 
+#ifdef ENABLE_LIBXML2
 #include "jse_xml.h"
+#endif
+
+#ifdef BUILD_RDK
 #include "jse_cosa.h"
+#endif
 
 #define MAX_SCRIPT_SIZE JSE_MAX_FILE_SIZE
 #define EXIT_FATAL 3
