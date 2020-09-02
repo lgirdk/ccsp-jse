@@ -261,8 +261,8 @@ static pid_t _waitpid(int pid, int * const pwstatus, int options)
  * @return -1 on error or 0 on success.
  */
 static int read_and_wait(int pid, int outfd, int errfd, 
-    char ** const pOutbuf, size_t * const pOutlen, 
-    char ** const pErrbuf, size_t * const pErrlen,
+    void ** const pOutbuf, size_t * const pOutlen,
+    void ** const pErrbuf, size_t * const pErrlen,
     int * pStatus)
 {
     int ret = -1;
@@ -393,27 +393,27 @@ static int read_and_wait(int pid, int outfd, int errfd,
 
 static pid_t fork_exec_read_and_wait(
     const char * const filename, char * const args[], char * const env[], 
-    char ** const pOutbuf, size_t * const pOutlen, 
-    char ** const pErrbuf, size_t * const pErrlen,
+    void ** const pOutbuf, size_t * const pOutlen,
+    void ** const pErrbuf, size_t * const pErrlen,
     int * pStatus)
 {
     pid_t pid = -1;
     int outfd = -1;
     int errfd = -1;
-    char * outbuf = NULL;
+    void * outbuf = NULL;
     size_t outlen = 4096;
-    char * errbuf = NULL;
+    void * errbuf = NULL;
     size_t errlen = 4096;
     int status = 0;
 
-    outbuf = (char *)calloc(sizeof(char), outlen);
+    outbuf = calloc(sizeof(char), outlen);
     if (outbuf == NULL)
     {
         JSE_ERROR("calloc() failed: %s", strerror(errno))
     }
     else
     {
-        errbuf = (char *)calloc(sizeof(char), errlen);
+        errbuf = calloc(sizeof(char), errlen);
         if (errbuf == NULL)
         {
             JSE_ERROR("calloc() failed: %s", strerror(errno))
@@ -728,9 +728,9 @@ duk_ret_t do_exec_process(duk_context * ctx)
         const char * filename = NULL;
         char ** args = { NULL };
         char ** env = { NULL };
-        char * outstr = NULL;
+        void * outstr = NULL;
         size_t outlen = 0;
-        char * errstr = NULL;
+        void * errstr = NULL;
         size_t errlen = 0;
         pid_t pid = -1;
         int status = 0;
@@ -819,11 +819,11 @@ duk_ret_t do_exec_process(duk_context * ctx)
         /* [ .... object, status ] */
         duk_put_prop_string(ctx, obj_idx, "status");
         /* [ .... object ]  ('status' = status) */
-        duk_push_string(ctx, outstr);
+        duk_push_lstring(ctx, outstr, outlen);
         /* [ .... object, outstr ] */
         duk_put_prop_string(ctx, obj_idx, "stdout");
         /* [ .... object ]  ('stdout' = outstr) */
-        duk_push_string(ctx, errstr);
+        duk_push_lstring(ctx, errstr, errlen);
         /* [ .... object, errstr ] */
         duk_put_prop_string(ctx, obj_idx, "stderr");
         /* [ .... object ]  ('stderr' = errstr) */

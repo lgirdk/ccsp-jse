@@ -61,7 +61,7 @@ void jse_context_destroy(jse_context_t *jse_ctx);
  * 
  * @return the bytes read or -1 on error.
  */
-ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size_t * const psize);
+ssize_t jse_read_fd_once(int fd, void ** const pbuffer, off_t * const poff, size_t * const psize);
 
 /**
  * Read from a file descriptor.
@@ -76,7 +76,7 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
  *
  * @return the file size or -1 on error.
  */
-ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize);
+ssize_t jse_read_fd(int fd, void ** const pbuffer, size_t * const psize);
 
 /**
  * Reads a file in to a buffer.
@@ -92,7 +92,7 @@ ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize);
  *
  * @return the file size or -1 on error.
  */
-ssize_t jse_read_file(const char * const filename, char ** const pbuffer, size_t * const psize);
+ssize_t jse_read_file(const char * const filename, void ** const pbuffer, size_t * const psize);
 
 /**
  * Creates a sub directory and all the intermediate directories.

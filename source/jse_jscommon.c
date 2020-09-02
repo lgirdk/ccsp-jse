@@ -107,7 +107,7 @@ static duk_ret_t do_include(duk_context * ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
     const char * filename = NULL;
-    char * buffer = NULL;
+    void * buffer = NULL;
     size_t size = 0;
     ssize_t bytes = 0;
 
@@ -153,7 +153,7 @@ static duk_ret_t do_include(duk_context * ctx)
                     JSE_ASSERT(buffer != NULL)
                     JSE_ASSERT(size != 0)
 
-                    if (run_buffer(ctx, buffer, size, filename) == DUK_EXEC_SUCCESS)
+                    if (run_buffer(ctx, (char*)buffer, size, filename) == DUK_EXEC_SUCCESS)
                     {
                         ret = 0;
                     }
@@ -275,7 +275,7 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
     const char * filename = NULL;
-    char * buffer = NULL;
+    void * buffer = NULL;
     size_t size = 0;
     ssize_t bytes = 0;
 
@@ -323,7 +323,7 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
 
                     JSE_VERBOSE("buffer=%p, size=%d", buffer, size)
 
-                    duk_push_lstring(ctx, buffer, (duk_size_t)size);
+                    duk_push_lstring(ctx, (const char*)buffer, (duk_size_t)size);
                     free(buffer);
 
                     ret = 1;

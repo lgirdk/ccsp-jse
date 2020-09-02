@@ -65,10 +65,10 @@ void jse_context_destroy(jse_context_t *jse_ctx)
  *
  * @return the bytes read, 0 on end of file, or -1 on error.
  */
-ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size_t * const psize)
+ssize_t jse_read_fd_once(int fd, void ** const pbuffer, off_t * const poff, size_t * const psize)
 {
     ssize_t bytes = -1;
-    char * buffer = *pbuffer;
+    void * buffer = *pbuffer;
     size_t size = *psize;
     off_t off = *poff;
 
@@ -91,7 +91,7 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
 
                 size *= 2;
 
-                newbuf = (char*)realloc(buffer, size);
+                newbuf = realloc(buffer, size);
                 if (newbuf == NULL)
                 {
                     JSE_ERROR("realloc() failed: %s", strerror(errno));
@@ -110,10 +110,10 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
             /* Do NOT resize to zero bytes (as that's a free) */
             if (size > 0)
             {
-                char * newbuf = NULL;
+                void * newbuf = NULL;
 
                 /* Resize the string for the contents to fit. */
-                newbuf = (char*)realloc(buffer, size);
+                newbuf = realloc(buffer, size);
                 if (newbuf == NULL)
                 {
                     JSE_ERROR("realloc() failed: %s", strerror(errno));
@@ -152,11 +152,11 @@ ssize_t jse_read_fd_once(int fd, char ** const pbuffer, off_t * const poff, size
  *
  * @return the file size or -1 on error.
  */
-ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize)
+ssize_t jse_read_fd(int fd, void ** const pbuffer, size_t * const psize)
 {
     /* Initial buffer size */
     size_t size = 4096;
-    char * buffer = (char*)malloc(size);
+    void * buffer = malloc(size);
     off_t off = 0;
     ssize_t bytes = -1;
 
@@ -203,9 +203,9 @@ ssize_t jse_read_fd(int fd, char ** const pbuffer, size_t * const psize)
  *
  * @return the file size or -1 on error.
  */
-ssize_t jse_read_file(const char * const filename, char ** const pbuffer, size_t * const psize)
+ssize_t jse_read_file(const char * const filename, void ** const pbuffer, size_t * const psize)
 {
-    char * buffer = NULL;
+    void * buffer = NULL;
     off_t offset = 0;
     size_t size = 0;
     ssize_t bytes = 0;
@@ -269,7 +269,7 @@ ssize_t jse_read_file(const char * const filename, char ** const pbuffer, size_t
 
     do
     {
-        TEMP_FAILURE_RETRY(bytes = read(fd, buffer + offset, size - offset));
+        TEMP_FAILURE_RETRY(bytes = read(fd, ((unsigned char *)buffer + offset), size - offset));
         if (bytes == -1)
         {
             JSE_ERROR("%s: %s", filename, strerror(errno))
@@ -282,8 +282,6 @@ ssize_t jse_read_file(const char * const filename, char ** const pbuffer, size_t
         }
     }
     while (bytes > 0 && size - offset > 0);
-
-    *(buffer + size) = '\0';
 
 done:
     close(fd);
