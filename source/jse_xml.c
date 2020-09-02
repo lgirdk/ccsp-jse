@@ -96,11 +96,14 @@ static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent)
 
 
 /**
- * Runs JavaScript code stored in a file, the name of which is on the stack.
+ * A JavaScript binding that converts a value to an XML document.
  *
- * @param jse_ctx the jse context.
- * @param buffer the buffer.
- * @param size the size of the context.
+ * This binds a JavaScript function that converts a value in to an XML
+ * document. The function takes two arguments, the first is the root
+ * node name and the second is the value. If the value is an object then
+ * it the object's structure is recreated in the XML document.
+ *
+ * @param ctx the duktape context.
  * @return an error status or 0.
  */
 static duk_ret_t do_objectToXMLString(duk_context * ctx)
