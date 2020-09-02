@@ -79,7 +79,8 @@ static header_item_t *first_header_item = NULL;
 /* Linked list of 'printed' items */
 struct print_buffer_item_s
 {
-    const char * string;
+    const void * string;
+    size_t length;
     struct print_buffer_item_s * next;
 };
 
@@ -419,7 +420,8 @@ static void return_response(jse_context_t *jse_ctx, int status, const char* cont
     {
         print_buffer_item_t * item = first_print_item;
 
-        printf("%s", item->string);
+        // So we can handle strings with null characters.
+        fwrite(item->string, item->length, 1, stdout);
         first_print_item = item->next;
         
         free(item);
@@ -578,55 +580,83 @@ static duk_int_t run_file(jse_context_t * jse_ctx)
 static duk_ret_t do_print(duk_context *ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
+    duk_int_t count = duk_get_top(ctx);
 
     JSE_ASSERT(ctx != NULL)
     JSE_ENTER("do_print(%p)", ctx)
 
-    if (is_http_request)
+    if (count > 0)
     {
-        /* Need to delay output because of errors, headers, etc */
-        char * string = strdup(duk_safe_to_string(ctx, -1));
-        if (string != NULL)
+        const void * dukstr = NULL;
+        size_t dukstrlen = 0;
+
+        /* Handle buffers as pure data */
+        if (duk_is_buffer_data(ctx, -1))
         {
-            print_buffer_item_t *item = (print_buffer_item_t*)calloc(sizeof(print_buffer_item_t), 1);
-            if (item != NULL)
+            dukstr = duk_get_buffer_data(ctx, -1, &dukstrlen);
+        }
+        else
+        {
+            dukstr = duk_safe_to_string(ctx, -1);
+            dukstrlen = strlen(dukstr);
+        }
+
+        /* Need to delay output because of errors, headers, etc */
+        if (is_http_request)
+        {
+            /* Do not use strdup because we may have null characters */
+            char * string = (char *)calloc(sizeof(char), dukstrlen);
+            if (string != NULL)
             {
-                item->string = string;
-                if (last_print_item != NULL)
+                memcpy(string, dukstr, dukstrlen);
+                print_buffer_item_t *item = (print_buffer_item_t*)calloc(sizeof(print_buffer_item_t), 1);
+                if (item != NULL)
                 {
-                    last_print_item->next = item;
+                    item->string = string;
+                    item->length = dukstrlen;
+
+                    if (last_print_item != NULL)
+                    {
+                        last_print_item->next = item;
+                    }
+
+                    last_print_item = item;
+
+                    if (first_print_item == NULL)
+                    {
+                        first_print_item = item;
+                    }
+
+                    /* Return undefined */
+                    ret = 0;
                 }
-
-                last_print_item = item;
-
-                if (first_print_item == NULL)
+                else
                 {
-                    first_print_item = item;
+                    int _errno = errno;
+                    free(string);
+                    /* Does not return */
+                    JSE_THROW_POSIX_ERROR(ctx, _errno, "calloc() failed: %s", strerror(_errno));
                 }
-
-                /* Return undefined */
-                ret = 0;
             }
             else 
             {
                 int _errno = errno;
-                free(string);
                 /* Does not return */
-                JSE_THROW_POSIX_ERROR(ctx, _errno, "calloc() failed: %s", strerror(_errno));
+                JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
             }
         }
-        else 
+        else
         {
-            int _errno = errno;
-            /* Does not return */
-            JSE_THROW_POSIX_ERROR(ctx, _errno, "strdup() failed: %s", strerror(_errno));
+            /* Do not use strdup because we may have null characters */
+            fwrite(dukstr, dukstrlen, 1, stdout);
+
+            /* Return undefined */
+            ret = 0;
         }
     }
     else
     {
-        printf("%s", duk_safe_to_string(ctx, -1));
-
-        /* Return undefined */
+        /* Does nothing but is not an error */
         ret = 0;
     }
 
