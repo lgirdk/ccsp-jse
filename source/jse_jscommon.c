@@ -337,6 +337,85 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
 }
 
 /**
+ * The binding for readFileAsBuffer()
+ *
+ * This function reads the file specified in the first argument in to
+ * a buffer and returns that buffer as a JavaScript buffer object.
+ * This function should be used when the type of the data is known not
+ * to be a string or is unknown.
+ *
+ * @param ctx the duktape context.
+ * @return an error status or 0.
+ */
+static duk_ret_t do_read_file_as_buffer(duk_context * ctx)
+{
+    duk_ret_t ret = DUK_RET_ERROR;
+    const char * filename = NULL;
+    void * buffer = NULL;
+    size_t size = 0;
+    ssize_t bytes = 0;
+
+    JSE_ENTER("do_read_file_as_buffer(%p)", ctx)
+
+    if (!duk_is_string(ctx, -1))
+    {
+        /* This does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Filename is not a string!");
+    }
+    else
+    {
+        filename = duk_safe_to_string(ctx, -1);
+        if (filename == NULL)
+        {
+            /* This does not return */
+            JSE_THROW_TYPE_ERROR(ctx, "Filename is null");
+        }
+        else
+        {
+            struct stat s;
+
+            if (stat(filename, &s) != 0)
+            {
+                /* This does not return */
+                JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", filename, strerror(errno));
+            }
+            else
+            if (!S_ISREG(s.st_mode))
+            {
+                /* This does not return */
+                JSE_THROW_URI_ERROR(ctx, "%s: not a regular file", filename);
+            }
+            else
+            {
+                bytes = jse_read_file(filename, &buffer, &size);
+                if (bytes == -1)
+                {
+                    JSE_ERROR("Failed to read: %s", filename)
+                }
+                else
+                {
+                    void * dukbuf = NULL;
+
+                    JSE_ASSERT(buffer != NULL)
+                    JSE_ASSERT(size != 0)
+
+                    JSE_VERBOSE("buffer=%p, size=%d", buffer, size)
+
+                    dukbuf = duk_push_fixed_buffer(ctx, size);
+                    memcpy(dukbuf, buffer, size);
+                    free(buffer);
+
+                    ret = 1;
+                }
+            }
+        }
+    }
+
+    JSE_EXIT("do_read_file_as_buffer()=%d", ret)
+    return ret;
+}
+
+/**
  * The binding for writeAsFile()
  *
  * This function writes in to the file specified in the first argument the
@@ -707,6 +786,9 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
 
                 duk_push_c_function(jse_ctx->ctx, do_read_file_as_string, 1);
                 duk_put_global_string(jse_ctx->ctx, "readFileAsString");
+
+                duk_push_c_function(jse_ctx->ctx, do_read_file_as_buffer, 1);
+                duk_put_global_string(jse_ctx->ctx, "readFileAsBuffer");
 
                 duk_push_c_function(jse_ctx->ctx, do_write_as_file, DUK_VARARGS);
                 duk_put_global_string(jse_ctx->ctx, "writeAsFile");
