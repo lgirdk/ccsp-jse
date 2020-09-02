@@ -379,7 +379,8 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                 /* TODO: Handle other data types eg buffers */
                 duk_int_t type = duk_get_type(ctx, 1);
                 if (DUK_TYPE_BOOLEAN == type || DUK_TYPE_NUMBER == type ||
-                    DUK_TYPE_OBJECT == type || DUK_TYPE_STRING == type)
+                    DUK_TYPE_OBJECT == type || DUK_TYPE_STRING == type ||
+                    DUK_TYPE_BUFFER == type)
                 {
                     int flags = O_WRONLY | O_TRUNC;
                     int fd = -1;
@@ -401,9 +402,19 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                     }
                     else
                     {
-                        const char * str = duk_safe_to_string(ctx, 1);
-                        size_t len = strlen(str);
+                        const void * str = NULL;
+                        size_t len = 0;
                         ssize_t bytes = -1;
+
+                        if (duk_is_buffer_data(ctx, 1))
+                        {
+                             str = duk_get_buffer_data(ctx, 1, &len);
+                        }
+                        else
+                        {
+                            str = duk_safe_to_string(ctx, 1);
+                            len = strlen(str);
+                        }
 
                         TEMP_FAILURE_RETRY(bytes = write(fd, str, len));
 
