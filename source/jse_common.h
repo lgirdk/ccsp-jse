@@ -15,7 +15,7 @@ extern "C" {
     do {} while (((long)(exp)) == -1 && errno == EINTR)
 #endif
 
-#define JSE_MAX_FILE_SIZE 100000
+#define JSE_MAX_FILE_SIZE (128 * 1024)
 
 /* Context for processing the request. Used by the fatal error handler */
 struct jse_context_s {
