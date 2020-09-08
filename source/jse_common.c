@@ -319,11 +319,11 @@ error2:
  *
  * @param path the sub directory path.
  *
- * @return 0 on success or -1 on error.
+ * @return 0 on success or an errno.
  */
 int jse_mkdir(const char* path)
 {
-    int ret = -1;
+    int ret = EINVAL;
 
     // NULL pointer is an error
     if (path == NULL)
@@ -335,6 +335,7 @@ int jse_mkdir(const char* path)
     if (path[0] != '/')
     {
         JSE_ERROR("Invalid path: %s", path);
+        ret = EPERM;
     }
     else
     {
@@ -371,6 +372,7 @@ int jse_mkdir(const char* path)
                                     break;
                                 default:
                                     JSE_ERROR("mkdir(): %s", strerror(errno))
+                                    ret = errno;
                                     err = true;
                                     break;
                             }
@@ -390,6 +392,7 @@ int jse_mkdir(const char* path)
                         if (errno != EEXIST)
                         {
                             JSE_ERROR("mkdir(): %s", strerror(errno))
+                            ret = errno;
                         }
                         else
                         {
@@ -408,6 +411,7 @@ int jse_mkdir(const char* path)
             else
             {
                 JSE_ERROR("strdup() failed: %s", strerror(errno))
+                ret = errno;
             }
         }
         else
@@ -420,6 +424,7 @@ int jse_mkdir(const char* path)
             else
             {
                 JSE_ERROR("%s: not a directory", path);
+                ret = ENOTDIR;
             }
         }
     }

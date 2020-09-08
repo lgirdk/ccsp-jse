@@ -565,6 +565,45 @@ static duk_ret_t do_remove_file(duk_context * ctx)
 }
 
 /**
+ * The binding for createDirectory()
+ *
+ * This function creates the directory specified in the string argument.
+ * This function will create any subdirectories required in the path.
+ * Existing directories are not an error.
+ *
+ * @param ctx the duktape context.
+ * @return an error status or 0.
+ */
+static duk_ret_t do_create_directory(duk_context * ctx)
+{
+    duk_ret_t ret = DUK_RET_ERROR;
+
+    JSE_ENTER("do_create_directory(%p)", ctx)
+
+    if (!duk_is_string(ctx, -1))
+    {
+        /* This does not return */
+        JSE_THROW_TYPE_ERROR(ctx, "Directory name is not a string!");
+    }
+    else
+    {
+        const char * dirname = duk_safe_to_string(ctx, 0);
+        int mderr = jse_mkdir(dirname);
+
+        if (mderr != 0)
+        {
+            JSE_THROW_POSIX_ERROR(ctx, mderr, "Failed to create directory: %s", strerror(mderr));
+        }
+        else
+        {
+            ret = 0;
+        }
+    }
+
+    return ret;
+}
+
+/**
  * The binding for listDirectory()
  *
  * This function lists the directory specified in the string argument.
@@ -795,6 +834,9 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
 
                 duk_push_c_function(jse_ctx->ctx, do_remove_file, 1);
                 duk_put_global_string(jse_ctx->ctx, "removeFile");
+
+                duk_push_c_function(jse_ctx->ctx, do_create_directory, 1);
+                duk_put_global_string(jse_ctx->ctx, "createDirectory");
 
                 duk_push_c_function(jse_ctx->ctx, do_list_directory, 1);
                 duk_put_global_string(jse_ctx->ctx, "listDirectory");

@@ -105,7 +105,7 @@ ssize_t jse_read_file(const char * const filename, void ** const pbuffer, size_t
  *
  * @param path the sub directory path.
  *
- * @return 0 on success or -1 on error.
+ * @return 0 on success or an errno.
  */
 int jse_mkdir(const char* path);
 
