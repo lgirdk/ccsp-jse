@@ -16,11 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.8)
 cmake_policy(SET CMP0048 NEW)
 
 project(jse
 	VERSION 1.0.0)
+
+find_package(PkgConfig REQUIRED)
 
 enable_testing()
 
@@ -45,7 +47,7 @@ endif(FAST_CGI)
 
 if(BUILD_RDK)
   message(STATUS, "rdk build")
-  set (CMAKE_C_FLAGS 
+  set (CMAKE_C_FLAGS
      "${CMAKE_C_FLAGS} \
      -D_ANSC_LINUX \
      -D_ANSC_USER -D_ANSC_LITTLE_ENDIAN_ -DBUILD_RDK")
@@ -54,17 +56,23 @@ else(BUILD_RDK)
 endif(BUILD_RDK)
 
 if(ENABLE_LIBXML2)
-  set (CMAKE_C_FLAGS 
+  pkg_check_modules(LIBXML2 REQUIRED libxml-2.0)
+
+  set (CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} \
-    -DENABLE_LIBXML2 \
-    -I/usr/include/libxml2")
+    ${LIBXML2_CFLAGS} \
+    ${LIBXML2_CFLAGS_OTHER} \
+    -DENABLE_LIBXML2")
 endif(ENABLE_LIBXML2)
 
 if(ENABLE_LIBCRYPTO)
+  pkg_check_modules(LIBCRYPTO REQUIRED libcrypto)
+
   set (CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} \
-    -DENABLE_LIBCRYPTO \
-    -I/usr/include/openssl")
+    ${LIBCRYPTO_CFLAGS} \
+    ${LIBCRYPTO_CFLAGS_OTHER} \
+    -DENABLE_LIBCRYPTO")
 endif(ENABLE_LIBCRYPTO)
 
 # in keeping with the small footprint goal, optimize for size (-Os)
@@ -101,16 +109,26 @@ if(ENABLE_LIBXML2)
   set(JSE_SOURCES
     ${JSE_SOURCES}
     source/jse_xml.c)
-  set(JSE_LIBS "${JSE_LIBS} -lxml2")
+
+  set(JSE_LIBS
+    "${JSE_LIBS} \
+    ${LIBXML2_LDFLAGS} \
+    ${LIBXML2_LDFLAGS_OTHER}")
 endif(ENABLE_LIBXML2)
 
 if(ENABLE_LIBCRYPTO)
   set(JSE_SOURCES
     ${JSE_SOURCES}
     source/jse_crypt.c)
-  set(JSE_LIBS "${JSE_LIBS} -lcrypto")
+
+  set(JSE_LIBS
+    "${JSE_LIBS} \
+    ${LIBCRYPTO_LDFLAGS} \
+    ${LIBCRYPTO_LDFLAGS_OTHER}")
 endif(ENABLE_LIBCRYPTO)
 
+# libcrypto has whitespace on the end of its pkgconfig. This line fixes it!
+string(STRIP ${JSE_LIBS} JSE_LIBS)
 add_executable(jse ${JSE_SOURCES})
 target_link_libraries(jse ${JSE_LIBS})
 
