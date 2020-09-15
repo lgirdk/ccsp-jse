@@ -1284,7 +1284,7 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
                         if (duk_next(ctx, -1, true)) /* get the value */
                         {
                             /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
-                            pParameterValList[index].parameterValue = (char *)duk_get_string(ctx, -1);
+                            pParameterValList[index].parameterValue = (char *)duk_safe_to_string(ctx, -1);
 
                             if (pParameterValList[index].type == ccsp_boolean)
                             {
