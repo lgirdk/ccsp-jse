@@ -13,6 +13,11 @@ extern "C" {
 int jse_cosa_init();
 
 /**
+ * Shutdown the CCSP message bus
+ */
+void jse_cosa_shutdown();
+
+/**
  * @brief Bind CCSP functions
  *
  * @param jse_ctx the jse context.

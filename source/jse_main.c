@@ -28,6 +28,9 @@
 
 #ifdef BUILD_RDK
 #include "jse_cosa.h"
+
+/** Flag that is set once the Cosa API is initialised successfully */
+static bool cosa_initialised = false;
 #endif
 
 #ifdef ENABLE_LIBCRYPTO
@@ -1649,15 +1652,22 @@ int main(int argc, char **argv)
         }
     }
 
-#ifdef BUILD_RDK
-    /* Initialise cosa before the main loop */
+/* Disable initialisation on start up for FCGI for now. */
+#if defined(BUILD_RDK) && !defined(ENABLE_FASTCGI)
+    /* Try and initialise cosa before the main processing */
     if (init_ccsp)
     {
+        JSE_INFO("Initialising COSA!")
+
         ret = jse_cosa_init();
         if (ret != 0)
         {
-            JSE_ERROR("cosa_init failed")
-            exit(EXIT_FAILURE);
+            /* Failure isn't terminal. */
+            JSE_WARNING("jse_cosa_init() failed. Will try again later!");
+        }
+        else
+        {
+            cosa_initialised = true;
         }
     }
 #endif
@@ -1677,7 +1687,6 @@ int main(int argc, char **argv)
             continue;
         }
 
-
         /* Need a copy of the string - will be freed by jse_context_destroy */
         filename = strdup(filenameenv);
         if (filename == NULL)
@@ -1687,6 +1696,30 @@ int main(int argc, char **argv)
             basic_return_error(HTTP_STATUS_INTERNAL_SERVER_ERROR);
             continue;
         }
+
+        JSE_INFO("Script filename: %s", filename)
+
+#ifdef BUILD_RDK
+        /* If we didn't successfully initialise CCSP Cosa but we wanted to
+           lets try again! */
+        if (init_ccsp && !cosa_initialised)
+        {
+            JSE_INFO("Initialising COSA!")
+
+            ret = jse_cosa_init();
+            if (ret != 0)
+            {
+                JSE_WARNING("jse_cosa_init() failed. Will try again later!");
+
+                basic_return_error(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+                continue;
+            }
+            else
+            {
+                cosa_initialised = true;
+            }
+        }
+#endif
 #endif
 
         /* Get the script and process it */
@@ -1711,6 +1744,7 @@ int main(int argc, char **argv)
             basic_return_error(HTTP_STATUS_INTERNAL_SERVER_ERROR);
             ret = 0;
         }
+
 #ifdef ENABLE_FASTCGI
         JSE_INFO("FCGI loop end")
     }

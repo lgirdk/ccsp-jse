@@ -237,6 +237,9 @@ int jse_cosa_init()
 {
     FILE *fp = NULL;
     int returnStatus = 0;
+    int ret = -1;
+
+    JSE_ENTER("jse_cosa_init()")
 
     /* Check if this is a PC simulation */
     fp = fopen(COSA_PHP_EXT_PCSIM, "r");
@@ -247,48 +250,69 @@ int jse_cosa_init()
     }
 
     bus_handle = NULL;
+
     /*
      *  Hardcoding "eRT." is just a workaround. We need to feed the subsystem
      *  info into this initialization routine.
      */
     if (gPcSim)
     {
-        sprintf(dst_pathname_cr, CCSP_DBUS_INTERFACE_CR);
+        JSE_VERBOSE("COSA using PC simulator!")
+        strncat(dst_pathname_cr, CCSP_DBUS_INTERFACE_CR, sizeof(dst_pathname_cr));
     }
     else
     {
-        sprintf(dst_pathname_cr, "eRT." CCSP_DBUS_INTERFACE_CR);
+        strncat(dst_pathname_cr, "eRT." CCSP_DBUS_INTERFACE_CR, sizeof(dst_pathname_cr));
     }
-
-    JSE_VERBOSE("COSA PHP extension starts -- PC sim = %d...", gPcSim)
-
-    JSE_VERBOSE("COSA PHP extension RINIT -- initialize dbus...")
 
     returnStatus = CCSP_Message_Bus_Init(COMPONENT_NAME, CONF_FILENAME, &bus_handle, 0, 0);
     if (returnStatus != 0)
     {
         JSE_ERROR("Message bus init failed, error code = %d!", returnStatus)
     }
-
-#ifndef BUILD_RBUS
-    CCSP_Msg_SleepInMilliSeconds(1000);
-    CCSP_Message_Bus_Register_Path(bus_handle, msg_path, path_message_func, 0);
+    else
+    {
+#ifdef BUILD_RBUS
+        ret = 0;
+#else
+        (void) CCSP_Msg_SleepInMilliSeconds(1000);
+        returnStatus = CCSP_Message_Bus_Register_Path(bus_handle, msg_path, path_message_func, 0);
+        if (returnStatus != CCSP_Message_Bus_OK)
+        {
+            JSE_ERROR("Message bus register failed, error code = %d!", returnStatus)
+            CCSP_Message_Bus_Exit(bus_handle);
+            bus_handle = NULL;
+        }
+        else
+        {
+            JSE_INFO("COSA initialised!")
+            ret = 0;
+        }
 #endif
-    return returnStatus;
+    }
+
+    JSE_EXIT("jse_cosa_init()=%d", ret)
+    return ret;
 }
 
-#if 0 /* Not currently used */
-static void cosa_shutdown()
+/**
+ * Shutdown the CCSP message bus
+ */
+void jse_cosa_shutdown()
 {
-    JSE_VERBOSE("COSA PHP extension exits...\n")
-#ifndef BUILD_RBUS /*TODO fix ccsp_message_bus.h: it doesn't define CCSP_Message_Bus_Exit if BUILD_RBUS enabled*/
+    JSE_ENTER("jse_cosa_shutdown()")
+
+/* TODO fix ccsp_message_bus.h: it doesn't define CCSP_Message_Bus_Exit if BUILD_RBUS enabled */
+#ifndef BUILD_RBUS
     if (bus_handle)
     {
         CCSP_Message_Bus_Exit(bus_handle);
+        bus_handle = NULL;
     }
 #endif
+
+    JSE_EXIT("jse_cosa_shutdown()");
 }
-#endif
 
 /**
  * @brief Helper function to count JS array size

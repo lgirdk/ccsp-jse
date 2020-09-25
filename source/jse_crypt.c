@@ -107,7 +107,7 @@ static void throwCryptError(duk_context * ctx, int error, const char * name)
  *
  * The following errors are returned:
  *
- *   ERROR_CRYPT_I  NVALID_KEY_LENGTH - the key length is invalid for the
+ *   ERROR_CRYPT_INVALID_KEY_LENGTH - the key length is invalid for the
  *                                    cipher.
  *   ERROR_CRYPT_IV_MISSING         - the cipher requires an IV.
  *   ERROR_CRYPT_INVALID_IV_LENGTH  - the IV length is invalid for the
