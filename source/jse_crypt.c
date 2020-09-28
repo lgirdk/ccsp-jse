@@ -120,13 +120,16 @@ static void throwCryptError(duk_context * ctx, int error, const char * name)
  * @param poutlen a pointer to return the size of the output data
  * @param cipher a pointer to the cipher function
  * @param key a pointer to the key
- * @param iv a pointer to the IV or NULL.
+ * @param keylen the length of the key
+ * @param iv a pointer to the IV or NULL
+ * @param ivlen the length of the IV if iv is not NULL
  *
  * @return 0 on success or an error value
  */
 static int encrypt(
     const void * inbuf, size_t inlen, void ** poutbuf, size_t * poutlen,
-    const EVP_CIPHER * cipher, const char * key, const char * iv)
+    const EVP_CIPHER * cipher, const void * key, size_t keylen,
+    const void * iv, size_t ivlen)
 {
     int ret = -1;
 
@@ -145,14 +148,14 @@ static int encrypt(
             EVP_EncryptInit_ex(ctx, cipher, NULL, NULL, NULL);
 
             /* Test the key */
-            if (EVP_CIPHER_CTX_key_length(ctx) != (int)strlen(key))
+            if (EVP_CIPHER_CTX_key_length(ctx) != (int)keylen)
             {
                 JSE_ERROR("Invalid key length! %d bytes required!", EVP_CIPHER_CTX_key_length(ctx))
                 ret = ERROR_CRYPT_INVALID_KEY_LENGTH;
             }
             else
             if (EVP_CIPHER_CTX_iv_length(ctx) != 0 &&
-                (iv == NULL || (EVP_CIPHER_CTX_iv_length(ctx) != (int)strlen(iv))))
+                (iv == NULL || (EVP_CIPHER_CTX_iv_length(ctx) != (int)ivlen)))
             {
                 if (iv == NULL)
                 {
@@ -238,13 +241,16 @@ static int encrypt(
  * @param poutlen a pointer to return the size of the output data
  * @param cipher a pointer to the cipher function
  * @param key a pointer to the key
- * @param iv a pointer to the IV or NULL.
- *
+ * @param keylen the length of the key
+ * @param iv a pointer to the IV or NULL
+ * @param ivlen the length of the IV if iv is not NULL
+*
  * @return 0 on success or an error value
  */
 static int decrypt(
     const void * inbuf, size_t inlen, void ** poutbuf, size_t * poutlen,
-    const EVP_CIPHER * cipher, const char * key, const char * iv)
+    const EVP_CIPHER * cipher, const void * key, size_t keylen,
+    const void * iv, size_t ivlen)
 {
     int ret = -1;
 
@@ -263,14 +269,14 @@ static int decrypt(
             EVP_DecryptInit_ex(ctx, cipher, NULL, NULL, NULL);
 
             /* Test the key */
-            if (EVP_CIPHER_CTX_key_length(ctx) != (int)strlen(key))
+            if (EVP_CIPHER_CTX_key_length(ctx) != (int)keylen)
             {
                 JSE_ERROR("Invalid key length! %d bytes required!", EVP_CIPHER_CTX_key_length(ctx))
                 ret = ERROR_CRYPT_INVALID_KEY_LENGTH;
             }
             else
             if (EVP_CIPHER_CTX_iv_length(ctx) != 0 &&
-                (iv == NULL || (EVP_CIPHER_CTX_iv_length(ctx) != (int)strlen(iv))))
+                (iv == NULL || (EVP_CIPHER_CTX_iv_length(ctx) != (int)ivlen)))
             {
                 if (iv == NULL)
                 {
@@ -360,13 +366,25 @@ duk_ret_t do_encrypt(duk_context * ctx)
     else
     {
         const EVP_CIPHER * cipher = NULL;
-        const char * key = duk_safe_to_string(ctx, 1);
-        const char * iv = NULL;
+        const void * key = NULL;
+        size_t keylen = 0;
+        const void * iv = NULL;
+        size_t ivlen = 0;
         const void * inbuf = NULL;
         size_t inlen = 0;
         void * outbuf = NULL;
         size_t outlen = 0;
         int encret = 0;
+
+        if (duk_is_buffer_data(ctx, 1))
+        {
+            key = duk_get_buffer_data(ctx, 1, &keylen);
+        }
+        else
+        {
+            key = duk_safe_to_string(ctx, 1);
+            keylen = strlen(key);
+        }
 
         if (!duk_is_number(ctx, 2))
         {
@@ -386,7 +404,15 @@ duk_ret_t do_encrypt(duk_context * ctx)
         /* IV value only needed for some encryption */
         if (count > 3)
         {
-            iv = duk_safe_to_string(ctx, 3);
+            if (duk_is_buffer_data(ctx, 3))
+            {
+                iv = duk_get_buffer_data(ctx, 3, &ivlen);
+            }
+            else
+            {
+                iv = duk_safe_to_string(ctx, 3);
+                ivlen = strlen(iv);
+            }
         }
 
         if (duk_is_buffer_data(ctx, 0))
@@ -399,7 +425,7 @@ duk_ret_t do_encrypt(duk_context * ctx)
             inlen = strlen((char*)inbuf);
         }
 
-        encret = encrypt(inbuf, inlen, &outbuf, &outlen, cipher, key, iv);
+        encret = encrypt(inbuf, inlen, &outbuf, &outlen, cipher, key, keylen, iv, ivlen);
         if (encret != 0)
         {
             throwCryptError(ctx, encret, "encrypt");
@@ -456,11 +482,23 @@ duk_ret_t do_decrypt(duk_context * ctx, bool asstring)
             size_t inlen = 0;
             const EVP_CIPHER * cipher = NULL;
             const void * inbuf = duk_get_buffer_data(ctx, 0, &inlen);
-            const char * key = duk_safe_to_string(ctx, 1);
-            const char * iv = NULL;
+            const void * key = NULL;
+            size_t keylen = 0;
+            const void * iv = NULL;
+            size_t ivlen = 0;
             void * outbuf = NULL;
             size_t outlen = 0;
             int decret = 0;
+
+            if (duk_is_buffer_data(ctx, 1))
+            {
+                key = duk_get_buffer_data(ctx, 1, &keylen);
+            }
+            else
+            {
+                key = duk_safe_to_string(ctx, 1);
+                keylen = strlen(key);
+            }
 
             if (!duk_is_number(ctx, 2))
             {
@@ -480,10 +518,18 @@ duk_ret_t do_decrypt(duk_context * ctx, bool asstring)
             /* IV value only needed for some encryption */
             if (count > 3)
             {
-                iv = duk_safe_to_string(ctx, 3);
+                if (duk_is_buffer_data(ctx, 3))
+                {
+                    iv = duk_get_buffer_data(ctx, 3, &ivlen);
+                }
+                else
+                {
+                    iv = duk_safe_to_string(ctx, 3);
+                    ivlen = strlen(iv);
+                }
             }
 
-            decret = decrypt(inbuf, inlen, &outbuf, &outlen, cipher, key, iv);
+            decret = decrypt(inbuf, inlen, &outbuf, &outlen, cipher, key, keylen, iv, ivlen);
             if (decret != 0)
             {
                 throwCryptError(ctx, decret, "decrypt");
