@@ -463,6 +463,42 @@ static duk_ret_t parse_parameter(const char *func, duk_context *ctx, const char 
                 }
                 break;
 
+            /* any (except null or undefined) - coerces value to a string */
+            case 'a':
+                if (duk_is_null_or_undefined(ctx, i))
+                {
+                    /* Does not return */
+                    JSE_THROW_TYPE_ERROR(ctx, "Type 'a' parameter specified is null or undefined!");
+                }
+                else
+                {
+                    const char **pstr = va_arg(vl, const char **);
+                    if (pstr == NULL)
+                    {
+                        JSE_ERROR("pstr is NULL")
+                        ret = DUK_RET_ERROR;
+                        break;
+                    }
+                    else
+                    {
+                        *pstr = duk_safe_to_string(ctx, i);
+                        if (*pstr)
+                        {
+                            if (!strlen(*pstr))
+                            {
+                                /* Does not return */
+                                JSE_THROW_TYPE_ERROR(ctx, "%s - parameter %d (any) empty", func, i);
+                            }
+                        }
+                        else
+                        {
+                            /* Does not return */
+                            JSE_THROW_TYPE_ERROR(ctx, "%s - parameter %d (any) missing", func, i);
+                        }
+                    }
+                }
+                break;
+
             default:
                 break;
         }
@@ -602,7 +638,7 @@ static duk_ret_t setStr(duk_context *ctx)
     JSE_ENTER("setStr(%p)", ctx)
 
     /* Parse Parameters first */
-    if (parse_parameter(__FUNCTION__, ctx, "ssb", &dotstr, &val, &bCommit) != 0)
+    if (parse_parameter(__FUNCTION__, ctx, "sab", &dotstr, &val, &bCommit) != 0)
     {
         JSE_ERROR("Error parsing argument(s)!")
     }
