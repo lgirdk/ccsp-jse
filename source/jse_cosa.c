@@ -24,6 +24,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <signal.h>
+#include <errno.h>
 #include <ccsp_message_bus.h>
 #include <ccsp_base_api.h>
 #include <ccsp_memory.h>
@@ -572,6 +573,8 @@ static duk_ret_t getStr(duk_context *ctx)
 
             if (CCSP_SUCCESS != returnStatus)
             {
+                free_parameterValStruct_t(bus_handle, size, parameterVal);
+
                 /* Does not return */
                 JSE_THROW_COSA_ERROR(ctx, returnStatus,
                     "CcspBaseIf_getParameterValues() failed: \"%s\"", dotstr);
@@ -589,13 +592,14 @@ static duk_ret_t getStr(duk_context *ctx)
 
                 JSE_VERBOSE("retParamVal=\"%s\"", retParamVal)
 
+                free_parameterValStruct_t(bus_handle, size, parameterVal);
+
                 /* Return only first param value */
                 duk_push_string(ctx, retParamVal);
 
                 /* Return one item, the last value in the stack. */
                 ret = 1;
             }
-            free_parameterValStruct_t(bus_handle, size, parameterVal);
         }
     }
 
@@ -644,95 +648,112 @@ static duk_ret_t setStr(duk_context *ctx)
     }
     else
     {
-        JSE_VERBOSE("dotstr=\"%s\",val=\"%s\",bCommit=%s", dotstr, val, bCommit ? "true" : "false")
-
-        bDbusCommit = (bCommit) ? 1 : 0;
-
-        /* Check whether there is subsystem prefix in the dot string
-           Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
-        CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
-
-        JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
-
-        /* Get Destination component */
-        returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
-        if (returnStatus != 0)
+        char *valcopy = strdup(val);
+        if (valcopy == NULL)
         {
             /* Does not return */
-            JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                "UiDbusClientGetDestComponent() failed: \"%s\"", dotstr);
+            JSE_THROW_COSA_ERROR(ctx, CCSP_ERR_MEMORY_ALLOC_FAIL,
+                "strdup(): %s", strerror(errno));
         }
         else
         {
-            /* First Get the current parameter Values */
-            returnStatus = CcspBaseIf_getParameterValues(bus_handle,
-                                                         ppDestComponentName,
-                                                         ppDestPath,
-                                                         &dotstr,
-                                                         1,
-                                                         &size,
-                                                         &structGet);
-            if (returnStatus != CCSP_SUCCESS)
+            JSE_VERBOSE("dotstr=\"%s\",val=\"%s\",bCommit=%s", dotstr, valcopy, bCommit ? "true" : "false")
+
+            bDbusCommit = (bCommit) ? 1 : 0;
+
+            /* Check whether there is subsystem prefix in the dot string
+            Split Subsytem prefix and COSA dotstr if subsystem prefix is found */
+            CheckAndSetSubsystemPrefix(&dotstr, subSystemPrefix);
+
+            JSE_VERBOSE("subSystemPrefix=\"%s\"", subSystemPrefix)
+
+            /* Get Destination component */
+            returnStatus = UiDbusClientGetDestComponent(dotstr, &ppDestComponentName, &ppDestPath, subSystemPrefix);
+            if (returnStatus != 0)
             {
+                free(valcopy);
+
                 /* Does not return */
                 JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                    "CcspBaseIf_getParameterValues() failed: \"%s\"", dotstr);
+                    "UiDbusClientGetDestComponent() failed: \"%s\"", dotstr);
             }
             else
             {
-                JSE_DEBUG(
-                    "structGet[0]->parameterName=\"%s\", structGet[0]->parameterValue=\"%s\"",
-                    structGet[0]->parameterName,
-                    structGet[0]->parameterValue)
-
-                if (size != 1 || strcmp(structGet[0]->parameterName, dotstr) != 0)
+                /* First Get the current parameter Values */
+                returnStatus = CcspBaseIf_getParameterValues(bus_handle,
+                                                            ppDestComponentName,
+                                                            ppDestPath,
+                                                            &dotstr,
+                                                            1,
+                                                            &size,
+                                                            &structGet);
+                if (returnStatus != CCSP_SUCCESS)
                 {
-                    JSE_ERROR("Miss match!")
+                    free(valcopy);
+
+                    /* Does not return */
+                    JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                        "CcspBaseIf_getParameterValues() failed: \"%s\"", dotstr);
                 }
                 else
                 {
-                    structSet[0].parameterName = (char *)dotstr;
-                    structSet[0].parameterValue = val;
-                    structSet[0].type = structGet[0]->type;
-                    returnStatus =
-                        CcspBaseIf_setParameterValues(
-                            bus_handle,
-                            ppDestComponentName,
-                            ppDestPath,
-                            0,
-                            CCSP_COMPONENT_ID_WebUI,
-                            structSet,
-                            1,
-                            bDbusCommit,
-                            &pFaultParameterNames);
+                    JSE_DEBUG(
+                        "structGet[0]->parameterName=\"%s\", structGet[0]->parameterValue=\"%s\"",
+                        structGet[0]->parameterName,
+                        structGet[0]->parameterValue)
 
-                    if (CCSP_SUCCESS != returnStatus)
+                    if (size != 1 || strcmp(structGet[0]->parameterName, dotstr) != 0)
                     {
-                        /* Does not return */
-                        JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                            "CcspBaseIf_setParameterValues() failed: \"%s\" \"%s\" %d",
-                            dotstr,
-                            structSet[0].parameterValue,
-                            bDbusCommit);
+                        JSE_ERROR("Miss match!")
                     }
                     else
                     {
-                        JSE_DEBUG(
-                            "dotstr=\"%s\", structSet[0].parameterValue=\"%s\", bDbusCommit=%d",
-                            dotstr,
-                            structSet[0].parameterValue,
-                            bDbusCommit);
+                        structSet[0].parameterName = (char *)dotstr;
+                        structSet[0].parameterValue = valcopy;
+                        structSet[0].type = structGet[0]->type;
+                        returnStatus =
+                            CcspBaseIf_setParameterValues(
+                                bus_handle,
+                                ppDestComponentName,
+                                ppDestPath,
+                                0,
+                                CCSP_COMPONENT_ID_WebUI,
+                                structSet,
+                                1,
+                                bDbusCommit,
+                                &pFaultParameterNames);
 
-                        /* Return nothing (undefined) */
-                        ret = 0;
+                        /* Per C99 free(NULL) is a NOP */
+                        free(pFaultParameterNames);
+                        free_parameterValStruct_t(bus_handle, size, structGet);
+
+                        if (CCSP_SUCCESS != returnStatus)
+                        {
+                            free(valcopy);
+
+                            /* Does not return */
+                            JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                                "CcspBaseIf_setParameterValues() failed: \"%s\" \"%s\" %d",
+                                dotstr,
+                                structSet[0].parameterValue,
+                                bDbusCommit);
+                        }
+                        else
+                        {
+                            JSE_DEBUG(
+                                "dotstr=\"%s\", structSet[0].parameterValue=\"%s\", bDbusCommit=%d",
+                                dotstr,
+                                structSet[0].parameterValue,
+                                bDbusCommit);
+
+                            /* Return nothing (undefined) */
+                            ret = 0;
+                        }
                     }
-
-                    /* Per C99 free(NULL) is a NOP */
-                    free(pFaultParameterNames);
-
-                    free_parameterValStruct_t(bus_handle, size, structGet);
                 }
             }
+
+            free(valcopy);
         }
     }
 
@@ -1053,7 +1074,8 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
         if (ppParamNameList == NULL)
         {
             /* Does not return */
-            JSE_THROW_POSIX_ERROR(ctx, errno, "calloc() failed: %s", strerror(errno));
+            JSE_THROW_COSA_ERROR(ctx, CCSP_ERR_MEMORY_ALLOC_FAIL,
+                "calloc() failed: %s", strerror(errno));
         }
 
         index = 0;
@@ -1171,9 +1193,9 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
 
+    int returnStatus = CCSP_SUCCESS;
     char *pRootObjName;
     char subSystemPrefix[6] = {0};
-    int returnStatus = 0;
     char *pDestComponentName = NULL;
     char *pDestPath = NULL;
 
@@ -1238,7 +1260,8 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
         if (pParameterValList == NULL)
         {
             /* Does not return */
-            JSE_THROW_POSIX_ERROR(ctx, errno, "calloc() failed: %s", strerror(errno));
+            JSE_THROW_COSA_ERROR(ctx, CCSP_ERR_MEMORY_ALLOC_FAIL,
+                "calloc() failed: %s", strerror(errno));
         }
 
         index = 0;
@@ -1255,12 +1278,14 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
             if (!duk_is_array(ctx, -1))
             {
                 free(pParameterValList);
+
                 /* Does not return */
                 JSE_THROW_TYPE_ERROR(ctx, "Item is not an array!");
             }
             else if (get_array_length(ctx, -1) != 3)
             {
                 free(pParameterValList);
+
                 /* Does not return */
                 JSE_THROW_RANGE_ERROR(ctx,
                     "Invalid sub-array size (%d)",
@@ -1344,24 +1369,32 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
                         if (duk_next(ctx, -1, true)) /* get the value */
                         {
                             /*FIXME unsafe cast from const char* to char*: fix when replacing ccsp with new system*/
-                            pParameterValList[index].parameterValue = (char *)duk_safe_to_string(ctx, -1);
+                            char * value = (char *)duk_safe_to_string(ctx, -1);
 
                             if (pParameterValList[index].type == ccsp_boolean)
                             {
                                 /* support true/false or 1/0 for boolean value */
-                                if (!strcmp(pParameterValList[index].parameterValue, "1"))
+                                if (!strcmp(value, "1"))
                                 {
                                     strcpy(BoolStrBuf, "true");
-                                    pParameterValList[index].parameterValue = BoolStrBuf;
+                                    value = BoolStrBuf;
                                 }
-                                else if (!strcmp(pParameterValList[index].parameterValue, "0"))
+                                else if (!strcmp(value, "0"))
                                 {
                                     strcpy(BoolStrBuf, "false");
-                                    pParameterValList[index].parameterValue = BoolStrBuf;
+                                    value = BoolStrBuf;
                                 }
                             }
+
                             JSE_VERBOSE("pParameterValList[%d].parameterValue=\"%s\"\n",
-                                index, pParameterValList[index].parameterValue)
+                                index, value)
+
+                            pParameterValList[index].parameterValue = strdup(value);
+                            if (pParameterValList[index].parameterValue == NULL)
+                            {
+                                JSE_ERROR("strdup(): %s", strerror(errno));
+                                returnStatus = CCSP_ERR_MEMORY_ALLOC_FAIL;
+                            }
 
                             /* pop value k/v */
                             duk_pop_2(ctx);
@@ -1369,16 +1402,19 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
                         else
                         {
                             JSE_ERROR("Subarray invalid")
+                            returnStatus = CCSP_FAILURE;
                         }
                     }
                     else
                     {
                         JSE_ERROR("Subarray invalid")
+                        returnStatus = CCSP_FAILURE;
                     }
                 }
                 else
                 {
                     JSE_ERROR("Subarray invalid")
+                    returnStatus = CCSP_FAILURE;
                 }
 
                 index++;
@@ -1392,35 +1428,54 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
         /* pop main array */
         duk_pop(ctx);
 
-        returnStatus =
-            CcspBaseIf_setParameterValues(
-                bus_handle,
-                pDestComponentName,
-                pDestPath,
-                0,
-                CCSP_COMPONENT_ID_WebUI,
-                pParameterValList,
-                index, /* use the actual count, instead of paramCount */
-                bDbusCommit,
-                &pFaultParamName);
+        if (CCSP_SUCCESS != returnStatus)
+        {
+            returnStatus =
+                CcspBaseIf_setParameterValues(
+                    bus_handle,
+                    pDestComponentName,
+                    pDestPath,
+                    0,
+                    CCSP_COMPONENT_ID_WebUI,
+                    pParameterValList,
+                    index, /* use the actual count, instead of paramCount */
+                    bDbusCommit,
+                    &pFaultParamName);
+        }
+
+        for (index = 0; index < paramCount; index++)
+        {
+            if (pParameterValList[index].parameterValue != NULL)
+            {
+                free(pParameterValList[index].parameterValue);
+            }
+        }
 
         free(pParameterValList);
 
         if (CCSP_SUCCESS != returnStatus)
         {
-            /* Temporary buffer on the stack which will get cleaned up on throw */
-            char faultParamName[256];
+            if (pFaultParamName != NULL)
+            {
+                /* Temporary buffer on the stack which will get cleaned up on throw */
+                char faultParamName[256];
 
-            strncpy(faultParamName, pFaultParamName ? pFaultParamName : "none", sizeof(faultParamName) - 1);
-            faultParamName[sizeof(faultParamName) - 1] = '\0';
+                strncpy(faultParamName, pFaultParamName ? pFaultParamName : "none", sizeof(faultParamName) - 1);
+                faultParamName[sizeof(faultParamName) - 1] = '\0';
 
-            /* Per C99 free(NULL) is a NOP */
-            free(pFaultParamName);
+                /* Per C99 free(NULL) is a NOP */
+                free(pFaultParamName);
 
-            /* Does not return */
-            JSE_THROW_COSA_ERROR(ctx, returnStatus,
-                "CcspBaseIf_setParameterValues() failed: %d: %s",
-                bDbusCommit, faultParamName);
+                /* Does not return */
+                JSE_THROW_COSA_ERROR(ctx, returnStatus,
+                    "CcspBaseIf_setParameterValues() failed: %d: %s",
+                    bDbusCommit, faultParamName);
+            }
+            else
+            {
+                /* Does not return */
+                JSE_THROW_COSA_ERROR(ctx, returnStatus, "Internal error");
+            }
         }
         else
         {
