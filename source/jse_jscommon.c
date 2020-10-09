@@ -202,7 +202,7 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
 {
 #ifdef JSE_DEBUG_ENABLED
     duk_int_t count = duk_get_top(ctx);
-    char * filename = "SCRIPT";
+    const char * filename = "SCRIPT";
     char * msg = NULL;
     int level = JSE_DEBUG_LEVEL_DEBUG;
     int line = 0;
@@ -242,7 +242,7 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
         }
         else
         {
-            filename = (char*)duk_safe_to_string(ctx, 2);
+            filename = duk_safe_to_string(ctx, 2);
         }
     }
 
@@ -268,13 +268,14 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
     }
     else
     {
-        char tmp[16];
+        char tmp[20];
 
         snprintf(tmp, sizeof(tmp), "LEVEL:%d", level);
         jse_debugPrint(filename, line, tmp, "%s", msg);
     }
 #endif
 
+    /* Returns no items on the value stack */
     JSE_EXIT("debugPrint()=0")
     return 0;
 }
@@ -343,6 +344,7 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
                     duk_push_lstring(ctx, (const char*)buffer, (duk_size_t)size);
                     free(buffer);
 
+                    /* Returns a single string on the value stack */
                     ret = 1;
                 }
             }
@@ -422,6 +424,7 @@ static duk_ret_t do_read_file_as_buffer(duk_context * ctx)
                     memcpy(dukbuf, buffer, size);
                     free(buffer);
 
+                    /* Returns a single buffer on the value stack */
                     ret = 1;
                 }
             }
@@ -498,13 +501,14 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                     }
                     else
                     {
-                        const void * str = NULL;
+                        const char * str = NULL;
                         size_t len = 0;
+                        size_t off = 0;
                         ssize_t bytes = -1;
 
                         if (duk_is_buffer_data(ctx, 1))
                         {
-                             str = duk_get_buffer_data(ctx, 1, &len);
+                             str = (const char *)duk_get_buffer_data(ctx, 1, &len);
                         }
                         else
                         {
@@ -512,7 +516,16 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                             len = strlen(str);
                         }
 
-                        TEMP_FAILURE_RETRY(bytes = write(fd, str, len));
+                        do
+                        {
+                            TEMP_FAILURE_RETRY(bytes = write(fd, str + off, len));
+                            if (bytes > 0)
+                            {
+                                off += bytes;
+                                len -= bytes;
+                            }
+                        }
+                        while((bytes > 0) && (len > 0));
 
                         if (bytes == -1) {
                             close(fd);
@@ -745,7 +758,8 @@ duk_ret_t do_sleep(duk_context * ctx)
             delay = sleep(delay);
         } 
         while (delay > 0);
-        
+
+        /* Nothing is returned on the value stack */
         ret = 0;
     }
     else

@@ -90,7 +90,7 @@ ssize_t jse_read_fd_once(int fd, void ** const pbuffer, off_t * const poff, size
     size_t size = *psize;
     off_t off = *poff;
 
-    TEMP_FAILURE_RETRY(bytes = read(fd, buffer + off, size - off));
+    TEMP_FAILURE_RETRY(bytes = read(fd, buffer + (size_t)off, size - (size_t)off));
     if (bytes == -1)
     {
         JSE_ERROR("read() failed: %s", strerror(errno))
@@ -112,7 +112,7 @@ ssize_t jse_read_fd_once(int fd, void ** const pbuffer, off_t * const poff, size
                 newbuf = realloc(buffer, size);
                 if (newbuf == NULL)
                 {
-                    JSE_ERROR("realloc() failed: %s", strerror(errno));
+                    JSE_ERROR("realloc() failed: %s", strerror(errno))
                     bytes = -1;
                 }
                 else
@@ -177,11 +177,11 @@ ssize_t jse_read_fd(int fd, void ** const pbuffer, size_t * const psize)
     void * buffer = malloc(size);
     off_t off = 0;
     ssize_t bytes = -1;
+    ssize_t ssize = -1;
 
     if (buffer == NULL)
     {
         JSE_ERROR("malloc() failed: %s", strerror(errno))
-        size = -1;
     }
     else
     {
@@ -195,16 +195,16 @@ ssize_t jse_read_fd(int fd, void ** const pbuffer, size_t * const psize)
         {
             JSE_ERROR("jse_read_fd_once() failed: %s", strerror(errno))
             free(buffer);
-            size = -1;
         }
         else
         {
             *pbuffer = buffer;
             *psize = size;
+            ssize = (ssize_t)size;
         }
     }
 
-    return size;
+    return ssize;
 }
 
 /**
@@ -352,7 +352,7 @@ int jse_mkdir(const char* path)
     // If must be an absolute path.
     if (path[0] != '/')
     {
-        JSE_ERROR("Invalid path: %s", path);
+        JSE_ERROR("Invalid path: %s", path)
         ret = EPERM;
     }
     else

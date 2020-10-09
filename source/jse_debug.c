@@ -43,7 +43,7 @@ bool jse_enter_exit = false;
  * @param format a printf() style formatting string
  * @param ... further printf() style arguments
  */
-void jse_debugPrint(char *file, int line, const char* levelStr, const char *format, ...)
+void jse_debugPrint(const char *file, int line, const char* levelStr, const char *format, ...)
 {
     struct timeval tv;
     long int ms;

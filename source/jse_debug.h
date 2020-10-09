@@ -21,11 +21,12 @@
 
 #include <stdbool.h>
 
-#if defined(__cplusplus)
+#define JSE_DEBUG_ENABLED 1
+
+/* Ensure we don't have an empty translation unit on release builds */
+#if defined(__cplusplus) && defined(JSE_DEBUG_ENABLED)
 extern "C" {
 #endif
-
-#define JSE_DEBUG_ENABLED 1
 
 #define JSE_DEBUG_LEVEL_ERROR    0
 #define JSE_DEBUG_LEVEL_WARNING  1
@@ -34,7 +35,7 @@ extern "C" {
 #define JSE_DEBUG_LEVEL_VERBOSE  4
 #define JSE_DEBUG_LEVEL_MAX      JSE_DEBUG_LEVEL_VERBOSE
 
-// These are for internal use
+/* These are for internal use */
 #define JSE_DEBUG_LEVEL_ENTER    5
 #define JSE_DEBUG_LEVEL_EXIT     5
 
@@ -57,7 +58,7 @@ extern bool jse_enter_exit;
  * @param format a printf() style formatting string
  * @param ... further printf() style arguments
  */
-void jse_debugPrint(char* file, int line, const char* levelStr, const char* format, ...);
+void jse_debugPrint(const char* file, int line, const char* levelStr, const char* format, ...);
 
 /**
  * Returns the textual debug level for an integer debug level.
@@ -122,7 +123,7 @@ const char* jse_debugGetLevel(int level);
 	
 #endif
 
-#if defined(__cplusplus)
+#if defined(__cplusplus) && defined(JSE_DEBUG_ENABLED)
 }
 #endif
 

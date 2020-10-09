@@ -22,6 +22,7 @@
 #include <stdio.h>
 #endif
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
 #include <getopt.h>
@@ -52,6 +53,12 @@ static bool cosa_initialised = false;
 
 #ifdef ENABLE_LIBCRYPTO
 #include "jse_crypt.h"
+#endif
+
+#ifndef __GNUC__
+#ifndef __attribute__
+#define __attribute__(a)
+#endif
 #endif
 
 #define MAX_SCRIPT_SIZE JSE_MAX_FILE_SIZE
@@ -459,6 +466,7 @@ static void return_response(jse_context_t *jse_ctx, int status, const char* cont
  * @param userdata a pointer to the jse context as a void*.
  * @param msg the error message.
  */
+__attribute__((noreturn))
 static void handle_fatal_error(void* userdata, const char *msg)
 {
     jse_context_t *jse_ctx = (jse_context_t*)userdata;
@@ -651,7 +659,7 @@ static duk_ret_t do_print(duk_context *ctx)
                         first_print_item = item;
                     }
 
-                    /* Return undefined */
+                    /* Nothing returned on the value stack */
                     ret = 0;
                 }
                 else
@@ -889,7 +897,9 @@ static duk_ret_t do_setCookie(duk_context * ctx)
 
     if (duk_is_boolean(ctx, -1))
     {
-        secure = (bool)duk_get_boolean_default(ctx, -1, false);
+        /* Prevent error with -Wbad-function-cast */
+        duk_bool_t duksec = duk_get_boolean_default(ctx, -1, false);
+        secure = (bool)duksec;
     }
     else
     {
@@ -1372,7 +1382,7 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             ret = 0;
         }
         /* An HTTP method was set but we failed to parse. */
-        else if (process_post != 0 || process_get != 0 || process_cookie != 0)
+        else if (process_post || process_get || process_cookie)
         {
             jse_ctx->req = qcgireq_parse(jse_ctx->req, Q_CGI_GET);
             if (jse_ctx->req != NULL)
@@ -1691,6 +1701,8 @@ int main(int argc, char **argv)
 #ifdef ENABLE_FASTCGI
     while (FCGI_Accept() >= 0)
     {
+        ret = DUK_ERR_ERROR;
+
         JSE_INFO("FCGI loop start")
 
         /* For Fast CGI get the script file name from the environment */
@@ -1753,6 +1765,10 @@ int main(int argc, char **argv)
             }
 
             jse_context_destroy(jse_ctx);
+        }
+        else
+        {
+            ret = DUK_ERR_ERROR;
         }
 
         if ((ret != 0) && (process_get || process_post || process_cookie))

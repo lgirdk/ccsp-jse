@@ -595,10 +595,10 @@ static int duk_array_to_string_array(duk_context * ctx, duk_idx_t obj_idx, char 
         {
             /* [ .... array ] */
 
-            duk_size_t len = duk_get_length(ctx, obj_idx);
-            duk_size_t idx;
+            duk_size_t    len = duk_get_length(ctx, obj_idx);
+            duk_uarridx_t idx;
 
-            for (idx = 0; idx < len; idx ++)
+            for (idx = 0; idx < (duk_uarridx_t)len; idx ++)
             {
                 duk_get_prop_index(ctx, obj_idx, idx);
                 /* [ .... array ... , element ] */

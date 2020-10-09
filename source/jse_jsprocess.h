@@ -19,6 +19,8 @@
 #ifndef JSE_JSPROCESS_H
 #define JSE_JSPROCESS_H
 
+#include "jse_common.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
