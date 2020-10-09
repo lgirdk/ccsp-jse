@@ -36,6 +36,12 @@
 #include "jse_cosa_error.h"
 #include "jse_cosa.h"
 
+#ifndef __GNUC__
+#ifndef __attribute__
+#define __attribute__(a)
+#endif
+#endif
+
 /** Reference count for binding. */
 static int ref_count = 0;
 
@@ -44,10 +50,8 @@ static int ref_count = 0;
 #define CCSP_COMPONENT_ID_WebUI 0x00000001
 #define COSA_PHP_EXT_PCSIM "/tmp/cosa_php_pcsim"
 
-void *bus_handle = NULL;
-char *dst_componentid = NULL;
-char *dst_pathname = NULL;
-char dst_pathname_cr[64] = {0};
+static void *bus_handle = NULL;
+static char dst_pathname_cr[64] = {0};
 static int gPcSim = 0;
 
 #ifndef BUILD_RBUS /*FIXME: mrollins: completely removed the functionality when rbus enabled -- do we need to add it back with rbus ? */
@@ -84,59 +88,67 @@ static const char *Introspect_msg = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>
  * @param user_data
  * @return an error status or DBUS_HANDLER_RESULT_HANDLED.
  */
-static DBusHandlerResult path_message_func(DBusConnection *conn, DBusMessage *message, void *user_data)
+static DBusHandlerResult path_message_func(DBusConnection *conn, DBusMessage *message,
+    __attribute__((unused)) void *user_data)
 {
-    const char *interface = dbus_message_get_interface(message);
-    const char *method = dbus_message_get_member(message);
-    DBusMessage *reply;
-    char *resp = "888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888";
-    char *from = 0;
-    char *req = 0;
-    char *err_msg = DBUS_ERROR_NOT_SUPPORTED;
-
-    /* To keep compiler happy */
-    user_data = user_data;
-
-    reply = dbus_message_new_method_return(message);
-    if (reply == NULL)
+    if (message != NULL)
     {
-        return DBUS_HANDLER_RESULT_HANDLED;
-    }
+        const char *interface = dbus_message_get_interface(message);
+        const char *method = dbus_message_get_member(message);
+        DBusMessage *reply;
+        char *resp = "888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888";
+        char *from = 0;
+        char *req = 0;
+        char *err_msg = DBUS_ERROR_NOT_SUPPORTED;
 
-    if (!strcmp("org.freedesktop.DBus.Introspectable", interface) && !strcmp(method, "Introspect"))
-    {
-        if (!dbus_message_append_args(reply, DBUS_TYPE_STRING, &Introspect_msg, DBUS_TYPE_INVALID))
+#ifndef __GNUC__
+        /* To keep compiler happy */
+        user_data = user_data;
+#endif
+
+        reply = dbus_message_new_method_return(message);
+        if (reply == NULL)
         {
-            if (!dbus_connection_send(conn, reply, NULL))
-            {
-                dbus_message_unref(reply);
-            }
+            return DBUS_HANDLER_RESULT_HANDLED;
         }
-        return DBUS_HANDLER_RESULT_HANDLED;
-    }
 
-    if (!strcmp(msg_interface, interface) && !strcmp(method, msg_method))
-    {
-        if (dbus_message_get_args(message,
-                                  NULL,
-                                  DBUS_TYPE_STRING, &from,
-                                  DBUS_TYPE_STRING, &req,
-                                  DBUS_TYPE_INVALID))
+        if (!strcmp("org.freedesktop.DBus.Introspectable", interface) && !strcmp(method, "Introspect"))
         {
-            dbus_message_append_args(reply, DBUS_TYPE_STRING, &resp, DBUS_TYPE_INVALID);
-            if (!dbus_connection_send(conn, reply, NULL))
+            if (!dbus_message_append_args(reply, DBUS_TYPE_STRING, &Introspect_msg, DBUS_TYPE_INVALID))
             {
-                dbus_message_unref(reply);
+                if (!dbus_connection_send(conn, reply, NULL))
+                {
+                    dbus_message_unref(reply);
+                }
             }
+            return DBUS_HANDLER_RESULT_HANDLED;
         }
+
+        if (!strcmp(msg_interface, interface) && !strcmp(method, msg_method))
+        {
+            if (dbus_message_get_args(message,
+                                    NULL,
+                                    DBUS_TYPE_STRING, &from,
+                                    DBUS_TYPE_STRING, &req,
+                                    DBUS_TYPE_INVALID))
+            {
+                dbus_message_append_args(reply, DBUS_TYPE_STRING, &resp, DBUS_TYPE_INVALID);
+                if (!dbus_connection_send(conn, reply, NULL))
+                {
+                    dbus_message_unref(reply);
+                }
+            }
+            return DBUS_HANDLER_RESULT_HANDLED;
+        }
+
+        dbus_message_set_error_name(reply, err_msg);
+        dbus_connection_send(conn, reply, NULL);
+        dbus_message_unref(reply);
+
         return DBUS_HANDLER_RESULT_HANDLED;
     }
 
-    dbus_message_set_error_name(reply, err_msg);
-    dbus_connection_send(conn, reply, NULL);
-    dbus_message_unref(reply);
-
-    return DBUS_HANDLER_RESULT_HANDLED;
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 #endif /* BUILD_RBUS */
 
@@ -259,11 +271,11 @@ int jse_cosa_init()
     if (gPcSim)
     {
         JSE_VERBOSE("COSA using PC simulator!")
-        strncat(dst_pathname_cr, CCSP_DBUS_INTERFACE_CR, sizeof(dst_pathname_cr));
+        strncat(dst_pathname_cr, CCSP_DBUS_INTERFACE_CR, sizeof(dst_pathname_cr) - 1);
     }
     else
     {
-        strncat(dst_pathname_cr, "eRT." CCSP_DBUS_INTERFACE_CR, sizeof(dst_pathname_cr));
+        strncat(dst_pathname_cr, "eRT." CCSP_DBUS_INTERFACE_CR, sizeof(dst_pathname_cr) - 1);
     }
 
     returnStatus = CCSP_Message_Bus_Init(COMPONENT_NAME, CONF_FILENAME, &bus_handle, 0, 0);
@@ -273,9 +285,7 @@ int jse_cosa_init()
     }
     else
     {
-#ifdef BUILD_RBUS
-        ret = 0;
-#else
+#ifndef BUILD_RBUS
         (void) CCSP_Msg_SleepInMilliSeconds(1000);
         returnStatus = CCSP_Message_Bus_Register_Path(bus_handle, msg_path, path_message_func, 0);
         if (returnStatus != CCSP_Message_Bus_OK)
@@ -289,6 +299,8 @@ int jse_cosa_init()
             JSE_INFO("COSA initialised!")
             ret = 0;
         }
+#else
+        ret = 0;
 #endif
     }
 
@@ -312,7 +324,7 @@ void jse_cosa_shutdown()
     }
 #endif
 
-    JSE_EXIT("jse_cosa_shutdown()");
+    JSE_EXIT("jse_cosa_shutdown()")
 }
 
 /**
@@ -404,7 +416,7 @@ static duk_ret_t parse_parameter(const char *func, duk_context *ctx, const char 
                 }
                 else
                 {
-                    duk_bool_t *pbool = (duk_bool_t*)va_arg(vl, bool *);
+                    duk_bool_t *pbool = (duk_bool_t*)va_arg(vl, duk_bool_t *);
                     if (pbool == NULL)
                     {
                         JSE_ERROR("pbool is NULL")
@@ -833,7 +845,20 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
                 for (loop1 = 0, loop2 = 0; loop1 < (size_t)(InstNum) && loop2 < sizeof(format_s); loop1++)
                 {
                     len = snprintf(&format_s[loop2], sizeof(format_s) - loop2, "%d,", pInstNumList[loop1]);
+                    if (len < 0)
+                    {
+                        break;
+                    }
+
                     loop2 = loop2 + len;
+                }
+
+                if (len < 0)
+                {
+                    free(pInstNumList);
+
+                    /* Does not return */
+                    JSE_THROW_COSA_ERROR(ctx, CCSP_FAILURE, "snprintf() failed!");
                 }
 
                 duk_push_string(ctx, format_s);
@@ -841,10 +866,8 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
                 /* One item returned on the bottom of the stack, the string */
                 ret = 1;
             }
-            if (pInstNumList)
-            {
-                free(pInstNumList);
-            }
+
+            free(pInstNumList);
         }
     }
 
@@ -1025,14 +1048,14 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
     duk_idx_t pParamNameArray;
     int paramCount;
     char **ppParamNameList = NULL;
-    int index = 0;
+    duk_uarridx_t index = 0;
     int valCount = 0;
     parameterValStruct_t **ppParameterVal = NULL;
 
     JSE_ASSERT(ctx != NULL)
     JSE_ENTER("DmExtGetStrsWithRootObj(%p)", ctx)
 
-    /* Parse paremeters */
+    /* Parse parameters */
     if (parse_parameter(__FUNCTION__, ctx, "so", &pRootObjName, &pParamNameArray) != 0)
     {
         JSE_ERROR("Error parsing argument(s)!")
@@ -1206,7 +1229,7 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
     int paramCount;
     parameterValStruct_t *pParameterValList = NULL;
     char BoolStrBuf[16] = {0};
-    int index = 0;
+    duk_uarridx_t index = 0;
     char *pFaultParamName = NULL;
 
     JSE_ASSERT(ctx != NULL)
@@ -1510,7 +1533,7 @@ static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
     int returnStatus = 0;
     unsigned int InstNum = 0;
     unsigned int *pInstNumList = NULL;
-    unsigned int index = 0;
+    duk_uarridx_t index = 0;
 
     JSE_ASSERT(ctx != NULL)
     JSE_ENTER("DmExtGetInstanceIds(%p)", ctx)

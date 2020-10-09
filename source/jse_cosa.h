@@ -20,6 +20,8 @@
 #ifndef JSE_COSA_H
 #define JSE_COSA_H
 
+#include "jse_common.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -29,12 +31,12 @@ extern "C" {
  *
  * @return an error status or 0.
  */
-int jse_cosa_init();
+int jse_cosa_init(void);
 
 /**
  * Shutdown the CCSP message bus
  */
-void jse_cosa_shutdown();
+void jse_cosa_shutdown(void);
 
 /**
  * @brief Bind CCSP functions

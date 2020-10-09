@@ -22,6 +22,12 @@
 #include "jse_jserror.h"
 #include "jse_cosa_error.h"
 
+#ifndef __GNUC__
+#ifndef __attribute__
+#define __attribute__(a)
+#endif
+#endif
+
 /** Reference count for binding. */
 static int ref_count = 0;
 
@@ -136,7 +142,7 @@ static duk_int_t push_cosa_error_va(duk_context * ctx, int error_code, const cha
     duk_put_prop_string(ctx, -2, "getErrorCode"); /* Error */
     /* [ .... Error ] */
 
-    return 0;
+    return DUK_ERR_NONE;
 }
 
 /**
@@ -167,6 +173,7 @@ static duk_int_t push_cosa_error(duk_context * ctx, int error_code, const char *
  * @param error_code the Cosa error code.
  * @param format the format string followed by arguments.
  */
+__attribute__((noreturn))
 void jse_throw_cosa_error(duk_context * ctx, int error_code, const char * format, ...)
 {
     duk_int_t ret = DUK_ERR_ERROR;
@@ -176,7 +183,7 @@ void jse_throw_cosa_error(duk_context * ctx, int error_code, const char * format
     ret = push_cosa_error_va(ctx, error_code, format, ap);
     va_end(ap);
 
-    if (ret == 0)
+    if (ret == DUK_ERR_NONE)
     {
         /* [ CosaError ] */
 
@@ -232,6 +239,7 @@ static duk_ret_t do_new_cosa_error(duk_context * ctx)
 
                 if (push_cosa_error(ctx, cosa_error, "%s", message) == 0)
                 {
+                    /* One item returned, an Error */
                     ret = 1;
                 }
             }
