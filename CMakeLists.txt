@@ -137,7 +137,3 @@ if(BUILD_RDK)
 	  RUNTIME DESTINATION sbin)
 endif(BUILD_RDK)
 
-if(BUILD_TESTING)
-  add_subdirectory(tests)
-endif(BUILD_TESTING)
-
