@@ -190,7 +190,8 @@ static int encrypt(
             else
             {
                 /* Update the key and IV values */
-                EVP_EncryptInit_ex(ctx, NULL, NULL, (unsigned char *)key, (unsigned char *)iv);
+                EVP_EncryptInit_ex(ctx, NULL, NULL,
+                    (unsigned const char *)key, (unsigned const char *)iv);
 
                 if (EVP_EncryptUpdate(ctx, outstr, &outlen, instr, (int)inlen))
                 {
@@ -440,7 +441,7 @@ duk_ret_t do_encrypt(duk_context * ctx)
         else
         {
             inbuf = duk_safe_to_string(ctx, 0);
-            inlen = strlen((char*)inbuf);
+            inlen = strlen(inbuf);
         }
 
         encret = encrypt(inbuf, inlen, &outbuf, &outlen, cipher, key, keylen, iv, ivlen);
@@ -638,7 +639,7 @@ duk_int_t jse_bind_crypt(jse_context_t * jse_ctx)
     JSE_ENTER("jse_bind_crypt(%p)", jse_ctx)
 
     JSE_VERBOSE("ref_count=%d", ref_count)
-    if (jse_ctx != NULL)
+    if (jse_ctx != NULL && jse_ctx->ctx != NULL)
     {
         /* jscommon is dependent upon jserror error objects so bind here */
         if ((ret = jse_bind_jserror(jse_ctx)) != 0)
