@@ -61,6 +61,8 @@ static bool cosa_initialised = false;
 #endif
 #endif
 
+#define CONST_STRLEN(a)  (sizeof(a) - 1)
+
 #define MAX_SCRIPT_SIZE JSE_MAX_FILE_SIZE
 #define EXIT_FATAL 3
 
@@ -83,6 +85,12 @@ static bool cosa_initialised = false;
 #define HTTP_STATUS_IM_A_TEAPOT            418
 #define HTTP_STATUS_INTERNAL_SERVER_ERROR  500
 #define HTTP_STATUS_NOT_IMPLEMENTED        501
+
+/* The environment. See man environ */
+extern char **environ;
+
+/* Initial body read buffer size */
+#define BODY_READ_BUF_SIZE 4096
 
 /* The upload directory */
 static char * upload_dir = NULL;
@@ -1263,11 +1271,11 @@ static void create_request_object_params(duk_context *ctx, qentry_t *req, duk_in
  */
 static void create_request_object_envs(duk_context *ctx, duk_int_t idx)
 {
+    int i;
+
+    add_env_as_object_property(ctx, idx, "CONTENT_LENGTH");
+    add_env_as_object_property(ctx, idx, "CONTENT_TYPE");
     add_env_as_object_property(ctx, idx, "DOCUMENT_ROOT");
-    add_env_as_object_property(ctx, idx, "HTTP_COOKIE");
-    add_env_as_object_property(ctx, idx, "HTTP_HOST");
-    add_env_as_object_property(ctx, idx, "HTTP_REFERER");
-    add_env_as_object_property(ctx, idx, "HTTP_USER_AGENT");
     add_env_as_object_property(ctx, idx, "HTTPS");
     add_env_as_object_property(ctx, idx, "PATH");
     add_env_as_object_property(ctx, idx, "QUERY_STRING");
@@ -1281,6 +1289,187 @@ static void create_request_object_envs(duk_context *ctx, duk_int_t idx)
     add_env_as_object_property(ctx, idx, "SCRIPT_NAME");
     add_env_as_object_property(ctx, idx, "SERVER_NAME");
     add_env_as_object_property(ctx, idx, "SERVER_PORT");
+
+    /* environ is a NULL terminated list of pointers */
+
+    /* Now add all the HTTP_ environment variables. All request
+       headers are converted in to HTTP_ environment variables
+       by the server by capitalisation of the header name and
+       prepending HTTP_ to it. */
+    for (i = 0; environ[i] != NULL; i++)
+    {
+        /* If the variable starts with HTTP_ process it */
+        if (0 == strncmp(environ[i], "HTTP_", CONST_STRLEN("HTTP_")))
+        {
+            /* Get a modifiable version of the name=value pair. */
+            char * var = strdup(environ[i]);
+            if (var == NULL)
+            {
+                JSE_ERROR("strdup() failed: %s", strerror(errno))
+            }
+            else
+            {
+                char * pequals = strchr(var, '=');
+                if (pequals != NULL)
+                {
+                    *pequals = 0;
+                    add_env_as_object_property(ctx, idx, var);
+                }
+
+                free(var);
+            }
+        }
+    }
+}
+
+/**
+ * @brief Indicates if the request has a body to parse
+ *
+ * This function returns true if the request has a body to parse. I.e. the
+ * request is either a PUT, POST or PATCH.
+ *
+ * @return true if there is a request body to parse
+ */
+static bool request_has_body(void)
+{
+    bool hasBody = false;
+
+    JSE_ENTER("request_has_body()")
+
+    char * requestMethod = getenv("REQUEST_METHOD");
+    if (requestMethod != NULL)
+    {
+        if (0 == strcmp(requestMethod, "PUT")  ||
+            0 == strcmp(requestMethod, "POST") ||
+            0 == strcmp(requestMethod, "PATCH"))
+        {
+            hasBody = true;
+        }
+    }
+
+    JSE_EXIT("request_has_body()=%s", hasBody ? "true" : "false");
+    return hasBody;
+}
+
+/**
+ * @brief Indicates if the content is parsable by qdecoder
+ *
+ * QDecoder can parse the following mime types:
+ *
+ *  - "application/x-www-form-urlencoded"
+ *  - "multipart/form-data"
+ *
+ * @return true if parsable by qdecoder.
+ */
+static bool request_parsable_by_qdecoder(void)
+{
+    bool parsable = false;
+
+    JSE_ENTER("request_parsable_by_qdecoder()")
+
+    /* If qdecoder can parse the content let it. */
+    const char * contentType = getenv("CONTENT_TYPE");
+    if (contentType != NULL)
+    {
+        if (0 == strncmp(contentType,
+                "application/x-www-form-urlencoded",
+                CONST_STRLEN("application/x-www-form-urlencoded")) ||
+            0 == strncmp(contentType,
+                "multipart/form-data",
+                CONST_STRLEN("multipart/form-data")))
+        {
+            parsable = true;
+        }
+    }
+
+    JSE_EXIT("request_parsable_by_qdecoder()=%s", parsable ? "true" : "false");
+    return parsable;
+}
+
+/**
+ * @brief Returns the request body content length
+ *
+ * This function returns the request body content length or -1 if it is not
+ * defined or is defined but not set in the header.
+ *
+ * @return the request body content length or -1 if not set
+ */
+static int get_request_content_length(void)
+{
+    const char * contentLength = getenv("CONTENT_LENGTH");
+    int length = -1;
+
+    JSE_ENTER("get_request_content_length()")
+
+    if (contentLength != NULL)
+    {
+        length = atoi(contentLength);
+    }
+
+    JSE_EXIT("get_request_content_length()=%d", length);
+    return length;
+}
+
+/**
+ * @brief Creates a property comprising the HTTP request body.
+ *
+ * This function creates a property that comprises the body of the request.
+ * The property is only created if qdecoder does not handle it. QDecoder can
+ * parse the following mime types:
+ *
+ *  - "application/x-www-form-urlencoded"
+ *  - "multipart/form-data"
+ *
+ * If qdecoder cannot handle the mimetype the request body is read in to a
+ * property called "body" so that it can be processed by a script.
+ *
+ * @param ctx the duktape context.
+ * @param idx the index of the Request object.
+ */
+static void create_request_object_body(duk_context *ctx, duk_int_t idx)
+{
+    JSE_ENTER("create_request_object_body()")
+
+    /* Is it a POST, PUT or PATCH? */
+    if (request_has_body())
+    {
+        /* If qdecoder doesn't handle it, read the body and return it. */
+        if (!request_parsable_by_qdecoder())
+        {
+            /* Negative content length means not set */
+            int length = get_request_content_length();
+            if (length > 0)
+            {
+                /* Easy case. We know the size. */
+                size_t size = (size_t)length;
+
+                char * buffer = (char*)calloc(size, sizeof(char));
+                if (buffer != NULL)
+                {
+                    /* Use buffered streams because FCGI redirects these and
+                       we want to read from FCGI's stdin when enabled. */
+                    size_t bytes = fread(buffer, 1, size, stdin);
+
+                    /* bytes short when error or EOF */
+                    if (bytes < size && ferror(stdin))
+                    {
+                        JSE_ERROR("read() failed: %s", strerror(errno))
+                    }
+                    else
+                    {
+                        /* EOF is fine */
+                        duk_push_lstring(ctx, buffer, bytes);
+                        duk_put_prop_string(ctx, idx, "Body");
+                    }
+
+                    free(buffer);
+                }
+            }
+            /* else no body to return */
+        }
+    }
+
+    JSE_EXIT("create_request_object_body()")
 }
 
 /**
@@ -1302,6 +1491,7 @@ static duk_int_t create_request_object(jse_context_t *jse_ctx)
 
     create_request_object_params(ctx, req, idx);
     create_request_object_envs(ctx, idx);
+    create_request_object_body(ctx, idx);
 
     duk_put_global_string(ctx, JSE_REQUEST_OBJECT_NAME);
 
