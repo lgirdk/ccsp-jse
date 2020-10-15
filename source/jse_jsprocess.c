@@ -37,7 +37,7 @@ static int ref_count = 0;
 #define max(a, b) ((a > b) ? (a) : (b))
 
 /**
- * Forks the current process and execs filename as a process.
+ * @brief Forks the current process and execs filename as a process.
  * 
  * This function opens pipes, forks the current process, it then sets the
  * stdout and stderr of the child process to be one side of the pipes.
@@ -199,7 +199,7 @@ static pid_t fork_and_exec(const char * const filename, char * const args[], cha
 }
 
 /**
- * Wait for a process with debug.
+ * @brief Wait for a process with debug.
  *
  * This is basically waitpid but with lots of debug.
  *
@@ -258,7 +258,7 @@ static pid_t _waitpid(int pid, int * const pwstatus, int options)
 }
 
 /**
- * Reads from file descriptors until the close or the process exits.
+ * @brief Reads from file descriptors until the close or the process exits.
  * 
  * This function waits on a select for WAIT_TIME microseconds and if
  * a file descriptor is ready, will read from that descriptor. Whether
@@ -272,7 +272,7 @@ static pid_t _waitpid(int pid, int * const pwstatus, int options)
  * @param pOutbuf a pointer to the stdout buffer.
  * @param pOutlen a pointer to the stdout length.
  * @param pErrbuf a pointer to the stderr buffer.
- * @param pErrlen a pointer to the stderr len.
+ * @param pErrlen a pointer to the stderr length.
  * @param pStatus a pointer to the exit status.
  * 
  * @return -1 on error or 0 on success.
@@ -408,6 +408,25 @@ static int read_and_wait(int pid, int outfd, int errfd,
     return ret;
 }
 
+/**
+ * @brief runs a process and waits for it to complete
+ *
+ * This function fork()s and execve()s to run the specified process as a
+ * child of the JSE process. The process runs until completion. Whilst
+ * it runs the output on stdio and stderr is captured and returned, with
+ * the process's exit status, to the caller.
+ *
+ * @param filename the process to execute
+ * @param args the arguments for the process
+ * @param env the environment variables for the process
+ * @param pOutbuf a pointer to the stdout buffer.
+ * @param pOutlen a pointer to the stdout length.
+ * @param pErrbuf a pointer to the stderr buffer.
+ * @param pErrlen a pointer to the stderr length.
+ * @param pStatus a pointer to the exit status.
+ *
+ * @return the new process' PID.
+ */
 static pid_t fork_exec_read_and_wait(
     const char * const filename, char * const args[], char * const env[], 
     void ** const pOutbuf, size_t * const pOutlen,
@@ -475,7 +494,7 @@ static pid_t fork_exec_read_and_wait(
 }
 
 /**
- * Adds the value on the bottom of the stack to an vector of char* pointers
+ * @brief Adds the value on the bottom of the stack to an vector of char*
  *
  * This is a utility function. It pops the value off of the top of the
  * stack and strdups() the string adding the pointer to the string in to
@@ -489,7 +508,8 @@ static pid_t fork_exec_read_and_wait(
  *
  * @return -1 on error or 0 on success.
  */
-static int add_string_to_string_array(const char * const str, char *** const pArray, size_t * const pLength, size_t * const pSize)
+static int add_string_to_string_array(const char * const str, 
+    char *** const pArray, size_t * const pLength, size_t * const pSize)
 {
     int ret = -1;
     char ** array = *pArray;
@@ -548,7 +568,7 @@ static int add_string_to_string_array(const char * const str, char *** const pAr
 }
 
 /**
- * Converts a duktape array to an vector of pointers to C strings
+ * @brief Converts a duktape array to an vector of pointers to C strings
  *
  * This function takes a duktape array at the specified index on the stack
  * and returns a vector of pointers to C strings. The vector is terminated
@@ -567,7 +587,8 @@ static int add_string_to_string_array(const char * const str, char *** const pAr
  *
  * @return 0 on success or -1 on error.
  */
-static int duk_array_to_string_array(duk_context * ctx, duk_idx_t obj_idx, char *** const pArray, const char * first)
+static int duk_array_to_string_array(duk_context * ctx, duk_idx_t obj_idx, 
+    char *** const pArray, const char * first)
 {
     int ret = -1;
     size_t size = 16;
@@ -623,7 +644,7 @@ static int duk_array_to_string_array(duk_context * ctx, duk_idx_t obj_idx, char 
 }
 
 /**
- * Converts a duktape object to an vector of pointers to C strings
+ * @brief Converts a duktape object to an vector of pointers to C strings
  *
  * This function takes a duktape object at the specified index on the stack
  * and returns a vector of pointers to C strings. The vector is terminated
@@ -693,7 +714,7 @@ static int duk_object_to_string_array(duk_context * ctx, duk_idx_t obj_idx, char
 }
 
 /**
- * Frees the a string array vector.
+ * @brief Frees the a string array vector.
  *
  * This function frees the string array vectors created by
  * duk_array_to_string_array() and duk_object_to_string_array(),
@@ -717,7 +738,7 @@ static void free_string_array(char * array[])
 }
 
 /**
- * The binding for execProcess()
+ * @brief The binding for execProcess()
  *
  * This function spawns a child process and tracks it. It takes three
  * arguments, the process to execute, an optional array of arguments
@@ -862,7 +883,7 @@ duk_ret_t do_exec_process(duk_context * ctx)
 }
 
 /**
- * The binding for sendSignal()
+ * @brief The binding for sendSignal()
  * 
  * This function sends a signal to a process. It takes two arguments,
  * the first is required and is the PID of the process. The second is the
@@ -952,7 +973,7 @@ duk_int_t jse_bind_jsprocess(jse_context_t * jse_ctx)
 }
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * Actually just decrements the reference count. Needed for fast cgi
  * since the same process will rebind. Not unbinding is not an issue

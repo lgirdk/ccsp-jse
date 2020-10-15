@@ -20,16 +20,23 @@
 #include "jse_debug.h"
 #include "jse_jserror.h"
 
+#ifndef __GNUC__
+#ifndef __attribute__
+#define __attribute__(a)
+#endif
+#endif
+
 /** Reference count for binding. */
 static int ref_count = 0;
 
 /**
- * The PosixError.toString() function binding.
+ * @brief The PosixError.toString() function binding.
  *
  * Returns a string representation of the error. Takes no arguments.
  *
  * @param ctx the duktape context
- * @return an error status or 0.
+ *
+ * @return 1.
  */
 static duk_ret_t do_posix_error_to_string(duk_context * ctx)
 {
@@ -72,12 +79,13 @@ static duk_ret_t do_posix_error_to_string(duk_context * ctx)
 }
 
 /**
- * The PosixError.getErrno() function binding.
+ * @brief The PosixError.getErrno() function binding.
  *
  * Returns errno. Takes no arguments.
  *
  * @param ctx the duktape context
- * @return an error status or 0.
+ *
+ * @return 1.
  */
 static duk_ret_t do_posix_error_get_errno(duk_context * ctx)
 {
@@ -94,14 +102,14 @@ static duk_ret_t do_posix_error_get_errno(duk_context * ctx)
 }
 
 /**
- * Pushes a PosixError object on to the stack.
+ * @brief Pushes a PosixError object on to the stack.
  *
  * @param ctx the duktape context.
  * @param _errno the POSIX errno.
  * @param format the message format string.
  * @param ap the parameter list.
  *
- * @return an error status or 0.
+ * @return 0.
  */
 static duk_int_t push_posix_error_va(duk_context * ctx, int _errno, const char * format, va_list ap)
 {
@@ -138,13 +146,13 @@ static duk_int_t push_posix_error_va(duk_context * ctx, int _errno, const char *
 }
 
 /**
- * Pushes a PosixError object on to the stack. Varargs version.
+ * @brief Pushes a PosixError object on to the stack. Varargs version.
  *
  * @param ctx the duktape context.
  * @param _errno the POSIX errno.
  * @param format the message format string followed by parameters.
  *
- * @return an error status or 0.
+ * @return 0 or a negative error status.
  */
 static duk_int_t push_posix_error(duk_context * ctx, int _errno, const char * format, ...)
 {
@@ -159,7 +167,7 @@ static duk_int_t push_posix_error(duk_context * ctx, int _errno, const char * fo
 }
 
 /**
- * Throws a PosixError object.
+ * @brief Throws a PosixError object.
  *
  * @param ctx the duktape context.
  * @param _errno the POSIX errno.
@@ -189,14 +197,14 @@ void jse_throw_posix_error(duk_context * ctx, int _errno, const char * format, .
 }
 
 /**
- * The PosixError constructor function binding.
+ * @brief The PosixError constructor function binding.
  *
  * Constructs a new PosixError object. The constructor takes two
  * arguments, an integer that is the errno value, and a message
  * string.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ * @return 1 or a negative error status.
  */
 static duk_ret_t do_new_posix_error(duk_context * ctx)
 {
@@ -240,14 +248,14 @@ static duk_ret_t do_new_posix_error(duk_context * ctx)
 }
 
 /**
- * The throwPosixError constructor function binding.
+ * @brief The throwPosixError constructor function binding.
  *
  * Constructs a new PosixError object and throws it. It takes two
  * arguments, an integer that is the errno value, and a message
  * string.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ * @return DUK_RET_ERROR.
  */
 static duk_ret_t do_throw_posix_error(duk_context * ctx)
 {
@@ -283,7 +291,7 @@ static duk_ret_t do_throw_posix_error(duk_context * ctx)
 }
 
 /**
- * Binds a set of JavaScript extensions
+ * @brief Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
  * @return an error status or 0.
@@ -315,7 +323,7 @@ duk_int_t jse_bind_jserror(jse_context_t * jse_ctx)
 }
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * Actually just decrements the reference count. Needed for fast cgi
  * since the same process will rebind. Not unbinding is not an issue

@@ -26,8 +26,10 @@ extern "C" {
 #endif
 
 /**
- * Lots of time you want to report on debug and throw an exception with the
- * same message. This macro does that.
+ * @brief Throws a base Error and outputs debug reporting the error
+ *
+ * This function causes a JavaScript Error to be thrown. Details of
+ * the error are output as debug via the JSE_ERROR debug macro.
  *
  * NEVER RETURNS!
  *
@@ -40,7 +42,7 @@ extern "C" {
     (void) duk_error(CTX, TYPE, __VA_ARGS__)
 
 /**
- * Throws a RangeError with debug.
+ * @brief Throws a RangeError and outputs debug reporting the error
  *
  * NEVER RETURNS!
  *
@@ -51,7 +53,7 @@ extern "C" {
     JSE_THROW_ERROR(CTX, DUK_ERR_RANGE_ERROR, __VA_ARGS__)
 
 /**
- * Throws a TypeError with debug.
+ * @brief Throws a TypeError and outputs debug reporting the error
  *
  * NEVER RETURNS!
  *
@@ -62,7 +64,7 @@ extern "C" {
     JSE_THROW_ERROR(CTX, DUK_ERR_TYPE_ERROR, __VA_ARGS__)
 
 /**
- * Throws a URIError with debug.
+ * @brief Throws a URIError and outputs debug reporting the error
  *
  * NEVER RETURNS!
  *
@@ -73,7 +75,9 @@ extern "C" {
     JSE_THROW_ERROR(CTX, DUK_ERR_URI_ERROR, __VA_ARGS__)
 
 /**
- * Throws a PosixError object.
+ * @brief Throws a PosixError and outputs debug reporting the error
+ *
+ * NEVER RETURNS!
  *
  * @param ctx the duktape context.
  * @param _errno the POSIX errno.
@@ -82,7 +86,7 @@ extern "C" {
 void jse_throw_posix_error(duk_context * ctx, int _errno, const char * format, ...);
 
 /**
- * Throws a PosixError with debug.
+ * @brief Throws a PosixError and outputs debug reporting the error
  *
  * NEVER RETURNS!
  *
@@ -95,7 +99,7 @@ void jse_throw_posix_error(duk_context * ctx, int _errno, const char * format, .
     jse_throw_posix_error(CTX, ERRNO, __VA_ARGS__)
 
 /**
- * Binds a set of JavaScript error objects
+ * @brief Binds a set of JavaScript error objects
  *
  * @param jse_ctx the jse context.
  * @return an error status or 0.
@@ -103,7 +107,7 @@ void jse_throw_posix_error(duk_context * ctx, int _errno, const char * format, .
 duk_int_t jse_bind_jserror(jse_context_t * jse_ctx);
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * @param jse_ctx the jse context.
  */

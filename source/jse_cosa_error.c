@@ -32,12 +32,13 @@
 static int ref_count = 0;
 
 /**
- * The CosaError.toString() function binding.
+ * @brief The CosaError.toString() function binding.
  *
- * Returns a string representation of the error. Takes no arguments.
+ * The JS function returns a string representation of the error. Takes no
+ * arguments.
  *
  * @param ctx the duktape context
- * @return an error status or 0.
+ * @return 1 or a negative error code.
  */
 static duk_ret_t do_cosa_error_to_string(duk_context * ctx)
 {
@@ -80,12 +81,12 @@ static duk_ret_t do_cosa_error_to_string(duk_context * ctx)
 }
 
 /**
- * The CosaError.getErrorCode() function binding.
+ * @brief The CosaError.getErrorCode() function binding.
  *
- * Returns errno. Takes no arguments.
+ * The JS function returns errno. Takes no arguments.
  *
  * @param ctx the duktape context
- * @return an error status or 0.
+ * @return 1.
  */
 static duk_ret_t do_cosa_error_get_error_code(duk_context * ctx)
 {
@@ -102,14 +103,14 @@ static duk_ret_t do_cosa_error_get_error_code(duk_context * ctx)
 }
 
 /**
- * Pushes a CosaError object on to the stack.
+ * @brief Pushes a CosaError object on to the stack.
  *
  * @param ctx the duktape context.
  * @param error_code the Cosa error code.
  * @param format the message format string.
  * @param ap the parameter list.
  *
- * @return an error status or 0.
+ * @return 0.
  */
 static duk_int_t push_cosa_error_va(duk_context * ctx, int error_code, const char * format, va_list ap)
 {
@@ -146,7 +147,7 @@ static duk_int_t push_cosa_error_va(duk_context * ctx, int error_code, const cha
 }
 
 /**
- * Pushes a PosixError object on to the stack. Varargs version.
+ * @brief Pushes a PosixError object on to the stack. Varargs version.
  *
  * @param ctx the duktape context.
  * @param error_code the Cosa error code.
@@ -166,14 +167,16 @@ static duk_int_t push_cosa_error(duk_context * ctx, int error_code, const char *
     return ret;
 }
 
+__attribute__((noreturn))
 /**
  * Throws a CosaError object.
+ *
+ * NEVER RETURNS!
  *
  * @param ctx the duktape context.
  * @param error_code the Cosa error code.
  * @param format the format string followed by arguments.
  */
-__attribute__((noreturn))
 void jse_throw_cosa_error(duk_context * ctx, int error_code, const char * format, ...)
 {
     duk_int_t ret = DUK_ERR_ERROR;
@@ -198,14 +201,13 @@ void jse_throw_cosa_error(duk_context * ctx, int error_code, const char * format
 }
 
 /**
- * The PosixError constructor function binding.
+ * @brief The PosixError constructor function binding.
  *
- * Constructs a new CosaError object. The constructor takes two
- * arguments, an integer that is the error code, and a message
- * string.
+ * Constructs a new JS CosaError object. The constructor takes two
+ * arguments, an integer that is the error code, and a message string.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ * @return 1 or a negative error status.
  */
 static duk_ret_t do_new_cosa_error(duk_context * ctx)
 {
@@ -250,14 +252,13 @@ static duk_ret_t do_new_cosa_error(duk_context * ctx)
 }
 
 /**
- * The throwCosaError constructor function binding.
+ * @brief The throwCosaError constructor function binding.
  *
- * Constructs a new CosaError object and throws it. It takes two
- * arguments, an integer that is the error code, and a message
- * string.
+ * Constructs a new JS CosaError object and throws it. It takes two
+ * arguments, an integer that is the error code, and a message string.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ * @return 1 or a negative error status.
  */
 static duk_ret_t do_throw_cosa_error(duk_context * ctx)
 {
@@ -293,7 +294,7 @@ static duk_ret_t do_throw_cosa_error(duk_context * ctx)
 }
 
 /**
- * Binds a set of JavaScript extensions
+ * @brief Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
  * @return an error status or 0.
@@ -325,7 +326,7 @@ duk_int_t jse_bind_cosa_error(jse_context_t * jse_ctx)
 }
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * Actually just decrements the reference count. Needed for fast cgi
  * since the same process will rebind. Not unbinding is not an issue

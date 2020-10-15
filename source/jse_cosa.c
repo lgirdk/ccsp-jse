@@ -309,7 +309,7 @@ int jse_cosa_init()
 }
 
 /**
- * Shutdown the CCSP message bus
+ * @brief Shutdown the CCSP message bus
  */
 void jse_cosa_shutdown()
 {
@@ -531,7 +531,8 @@ static duk_ret_t parse_parameter(const char *func, duk_context *ctx, const char 
  *  - CcspBaseIf_getParameterValues()
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 static duk_ret_t getStr(duk_context *ctx)
 {
@@ -631,7 +632,8 @@ static duk_ret_t getStr(duk_context *ctx)
  *  - commit flag
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 0 or an negative error status.
  */
 static duk_ret_t setStr(duk_context *ctx)
 {
@@ -780,7 +782,8 @@ static duk_ret_t setStr(duk_context *ctx)
  *  - CcspBaseIf_GetNextLevelInstances()
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 static duk_ret_t getInstanceIds(duk_context *ctx)
 {
@@ -882,7 +885,8 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
  *  - CcspBaseIf_AddTblRow()
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 static duk_ret_t addTblObj(duk_context *ctx)
 {
@@ -958,7 +962,8 @@ static duk_ret_t addTblObj(duk_context *ctx)
  *  - CcspBaseIf_DeleteTblRow()
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 0 or a negative error status.
  */
 static duk_ret_t delTblObj(duk_context *ctx)
 {
@@ -1033,7 +1038,8 @@ static duk_ret_t delTblObj(duk_context *ctx)
  *  - array of DM parameter names
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
 {
@@ -1210,7 +1216,8 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
  *  - array of DM parameter names
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 0 or a negative error status.
  */
 static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
 {
@@ -1520,7 +1527,8 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
  *  - object table name, e.g. Device.NAT.PortMapping.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ * 
+ * @return 1 or a negative error status.
  */
 static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
 {
@@ -1669,7 +1677,7 @@ duk_int_t jse_bind_cosa(jse_context_t* jse_ctx)
 }
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * Actually just decrements the reference count. Needed for fast cgi
  * since the same process will rebind. Not unbinding is not an issue

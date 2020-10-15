@@ -27,7 +27,7 @@ static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent)
 static int ref_count = 0;
 
 /**
- * Generates the XML for a child, handling an array or object appropriately
+ * @brief Generates the XML for a child, handling an array or object.
  *
  * This function generates the XML for a child on the bottom of the stack.
  * If the child is an array it will iterate the array. If the child is an
@@ -64,7 +64,7 @@ static void child_to_xml(duk_context * ctx, xmlNodePtr parent, const char* name)
 }
 
 /**
- * Iterates over an array added nodes for each element.
+ * @brief Iterates over an array added nodes for each element.
  *
  * @param ctx the duktape context.
  * @param obj_idx the index of the array to iterate.
@@ -86,7 +86,7 @@ static void iterate_array(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr paren
 }
 
 /**
- * Recursively walk over a JavaScript object making an XML tree.
+ * @brief Recursively walk over a JavaScript object making an XML tree.
  *
  * @param ctx the duktape context.
  * @param obj_idx the index of the object to walk.
@@ -113,7 +113,7 @@ static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent)
 
 
 /**
- * A JavaScript binding that converts a value to an XML document.
+ * @brief A JavaScript binding that converts a value to an XML document.
  *
  * This binds a JavaScript function that converts a value in to an XML
  * document. The function takes two arguments, the first is the root
@@ -121,7 +121,7 @@ static void walk_object(duk_context * ctx, duk_idx_t obj_idx, xmlNodePtr parent)
  * it the object's structure is recreated in the XML document.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ * @return 1 or a negative error status.
  */
 static duk_ret_t do_objectToXMLString(duk_context * ctx)
 {
@@ -181,7 +181,7 @@ static duk_ret_t do_objectToXMLString(duk_context * ctx)
 }
 
 /**
- * Binds a set of JavaScript relating to XML manipulation
+ * @brief Binds a set of JavaScript relating to XML manipulation
  *
  * @param jse_ctx the jse context.
  * @return an error status or 0.
@@ -210,7 +210,7 @@ duk_int_t jse_bind_xml(jse_context_t* jse_ctx)
 }
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * Actually just decrements the reference count. Needed for fast cgi
  * since the same process will rebind. Not unbinding is not an issue

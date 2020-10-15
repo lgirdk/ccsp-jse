@@ -33,12 +33,13 @@
 static int ref_count = 0;
 
 /**
- * Runs the code stored in a buffer, optionally identified by a filename.
+ * @brief Runs the code stored in a buffer, optionally identified by a filename.
  * 
  * @param ctx the duktape content.
  * @param buffer the buffer.
  * @param size the size of the context.
  * @param filename the optional filename (may be null).
+ *
  * @return an error status or 0.
  */
 static duk_int_t run_buffer(duk_context * ctx, const char * buffer, size_t size, const char * filename)
@@ -88,11 +89,12 @@ static duk_int_t run_buffer(duk_context * ctx, const char * buffer, size_t size,
 }
 
 /**
- * Runs JavaScript code stored in a buffer.
+ * @brief Runs JavaScript code stored in a buffer.
  *
  * @param jse_ctx the jse context.
  * @param buffer the buffer.
  * @param size the size of the context.
+ *
  * @return an error status or 0.
  */
 duk_int_t jse_run_buffer(jse_context_t * jse_ctx, const char * buffer, size_t size)
@@ -115,10 +117,14 @@ duk_int_t jse_run_buffer(jse_context_t * jse_ctx, const char * buffer, size_t si
 }
 
 /**
- * Runs JavaScript code stored in a file, the name of which is on the stack.
+ * @brief A JavaScript include binding.
+ *
+ * This JS function reads the file specified in the first argument, in to
+ * a buffer, and executes it. This will add all globals in the executed
+ * file to the global context.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ * @return 0 or a negative error.
  */
 static duk_ret_t do_include(duk_context * ctx)
 {
@@ -186,7 +192,7 @@ static duk_ret_t do_include(duk_context * ctx)
 }
 
 /**
- * A JavaScript debug print binding.
+ * @brief A JavaScript debug print binding.
  *
  * This binds a JavaScript function that uses the JSE debug_print() method
  * to print to the debug log. It takes the following arguments:
@@ -196,6 +202,7 @@ static duk_ret_t do_include(duk_context * ctx)
  *  - line number (optional)
  *
  * @param ctx the duktape context.
+ *
  * @return an error status or 0.
  */
 static duk_ret_t do_debugPrint(duk_context * ctx)
@@ -281,13 +288,14 @@ static duk_ret_t do_debugPrint(duk_context * ctx)
 }
 
 /**
- * The binding for readFileAsString()
+ * @brief A JavaScript binding for readFileAsString()
  *
- * This function reads the file specified in the first argument in to
- * a buffer and returns that buffer as a JavaScript string.
+ * This JS function reads the file specified in the first argument, in to
+ * a buffer, and returns that buffer as a JavaScript string.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 static duk_ret_t do_read_file_as_string(duk_context * ctx)
 {
@@ -356,15 +364,16 @@ static duk_ret_t do_read_file_as_string(duk_context * ctx)
 }
 
 /**
- * The binding for readFileAsBuffer()
+ * @brief The JavaScript binding for readFileAsBuffer()
  *
- * This function reads the file specified in the first argument in to
+ * This JS function reads the file specified in the first argument in to
  * a buffer and returns that buffer as a JavaScript buffer object.
  * This function should be used when the type of the data is known not
  * to be a string or is unknown.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 static duk_ret_t do_read_file_as_buffer(duk_context * ctx)
 {
@@ -436,14 +445,15 @@ static duk_ret_t do_read_file_as_buffer(duk_context * ctx)
 }
 
 /**
- * The binding for writeAsFile()
+ * @brief The JavaScript binding for writeAsFile()
  *
- * This function writes in to the file specified in the first argument the
+ * This JS function writes in to the file specified in the first argument the
  * value passed as the second argument. The third optional argument is a
  * boolean which, if true, will create the file if it does not exist.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 0 or a negative error status.
  */
 static duk_ret_t do_write_as_file(duk_context * ctx)
 {
@@ -551,12 +561,13 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
 }
 
 /**
- * The binding for removeFile()
+ * @brief The JavaScript binding for removeFile()
  *
- * This function removes the file specified in the string argument.
+ * This JS function removes the file specified in the string argument.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 0 or a negative error status.
  */
 static duk_ret_t do_remove_file(duk_context * ctx)
 {
@@ -595,14 +606,15 @@ static duk_ret_t do_remove_file(duk_context * ctx)
 }
 
 /**
- * The binding for createDirectory()
+ * @brief The JavaScript binding for createDirectory()
  *
- * This function creates the directory specified in the string argument.
+ * This JS function creates the directory specified in the string argument.
  * This function will create any subdirectories required in the path.
  * Existing directories are not an error.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 0 or a negative error status.
  */
 static duk_ret_t do_create_directory(duk_context * ctx)
 {
@@ -634,14 +646,15 @@ static duk_ret_t do_create_directory(duk_context * ctx)
 }
 
 /**
- * The binding for listDirectory()
+ * @brief The JavaScript binding for listDirectory()
  *
- * This function lists the directory specified in the string argument.
+ * This JS function lists the directory specified in the string argument.
  * This function returns all items in the directory, files, 
  * sub-durectories, symlinks etc. It does not recurse.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 static duk_ret_t do_list_directory(duk_context * ctx)
 {
@@ -734,12 +747,13 @@ static duk_ret_t do_list_directory(duk_context * ctx)
 }
 
 /**
- * The binding for sleep()
+ * @brief The JavaScript binding for sleep()
  *
- * This function sleeps the process for the specified number of seconds.
+ * This JS function sleeps the process for the specified number of seconds.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 0 or a negative error status.
  */
 duk_ret_t do_sleep(duk_context * ctx)
 {
@@ -773,12 +787,13 @@ duk_ret_t do_sleep(duk_context * ctx)
 }
 
 /**
- * The binding for usleep()
+ * @brief The binding for usleep()
  *
  * This function sleeps the process for the specified number of microseconds.
  *
  * @param ctx the duktape context.
- * @return an error status or 0.
+ *
+ * @return 0 or a negative error status.
  */
 duk_ret_t do_usleep(duk_context * ctx)
 {
@@ -825,9 +840,10 @@ duk_ret_t do_usleep(duk_context * ctx)
 }
 
 /**
- * Binds a set of JavaScript extensions
+ * @brief Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
+ *
  * @return an error status or 0.
  */
 duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
@@ -889,7 +905,7 @@ duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx)
 }
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * Actually just decrements the reference count. Needed for fast cgi
  * since the same process will rebind. Not unbinding is not an issue

@@ -47,7 +47,7 @@ void jse_cosa_shutdown(void);
 duk_int_t jse_bind_cosa(jse_context_t* jse_ctx);
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * @param jse_ctx the jse context.
  */

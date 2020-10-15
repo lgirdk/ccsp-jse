@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 /**
- * Runs JavaScript code stored in a buffer.
+ * @brief Runs JavaScript code stored in a buffer.
  *
  * @param jse_ctx the jse context.
  * @param buffer the buffer.
@@ -36,7 +36,7 @@ extern "C" {
 duk_ret_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size);
 
 /**
- * Binds a set of JavaScript extensions
+ * @brief Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
  * @return an error status or 0.
@@ -44,7 +44,7 @@ duk_ret_t jse_run_buffer(jse_context_t *jse_ctx, const char* buffer, size_t size
 duk_int_t jse_bind_jscommon(jse_context_t * jse_ctx);
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * @param jse_ctx the jse context.
  */

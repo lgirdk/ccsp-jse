@@ -26,7 +26,9 @@ extern "C" {
 #endif
 
 /**
- * Throws a CosaError object.
+ * @brief Throws a CosaError object.
+ *
+ * NEVER RETURNS!
  *
  * @param ctx the duktape context.
  * @param error_code the Cosa error code.
@@ -35,7 +37,7 @@ extern "C" {
 void jse_throw_cosa_error(duk_context * ctx, int error_code, const char * format, ...);
 
 /**
- * Throws a CosaError with debug.
+ * @brief Throws a CosaError with debug.
  *
  * NEVER RETURNS!
  *
@@ -48,7 +50,7 @@ void jse_throw_cosa_error(duk_context * ctx, int error_code, const char * format
     jse_throw_cosa_error(CTX, ERRORCODE, __VA_ARGS__)
 
 /**
- * Binds a set of JavaScript extensions
+ * @brief Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
  * @return an error status or 0.
@@ -56,7 +58,7 @@ void jse_throw_cosa_error(duk_context * ctx, int error_code, const char * format
 duk_int_t jse_bind_cosa_error(jse_context_t * jse_ctx);
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * @param jse_ctx the jse context.
  */

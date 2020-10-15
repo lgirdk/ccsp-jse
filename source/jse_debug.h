@@ -21,6 +21,7 @@
 
 #include <stdbool.h>
 
+/** Enable debug */
 #define JSE_DEBUG_ENABLED 1
 
 /* Ensure we don't have an empty translation unit on release builds */
@@ -50,7 +51,7 @@ extern bool jse_enter_exit;
 #define JSE_DEBUG_INIT(...)
 
 /**
- * Outputs a line of debug.
+ * @brief Outputs a line of debug.
  *
  * @param file the source file name
  * @param line the source line number
@@ -68,41 +69,53 @@ void jse_debugPrint(const char* file, int line, const char* levelStr, const char
  */
 const char* jse_debugGetLevel(int level);
 
+/** Debug print macro to output error information */
 #define JSE_ERROR(...) \
     do { \
         jse_debugPrint(__FILE__, __LINE__, "ERROR", __VA_ARGS__); \
     } while(0);
 
+/** Debug print macro to output warning information */
 #define JSE_WARNING(...) \
     if (jse_verbosity >= JSE_DEBUG_LEVEL_WARNING) { \
         jse_debugPrint(__FILE__, __LINE__, "WARNING", __VA_ARGS__); \
     }
 
+/** Debug print macro to output info level information */
 #define JSE_INFO(...) \
     if (jse_verbosity >= JSE_DEBUG_LEVEL_INFO) { \
         jse_debugPrint(__FILE__, __LINE__, "INFO", __VA_ARGS__); \
     }
 
+/** Debug print macro to output debug */
 #define JSE_DEBUG(...) \
     if (jse_verbosity >= JSE_DEBUG_LEVEL_DEBUG) { \
         jse_debugPrint(__FILE__, __LINE__, "DEBUG", __VA_ARGS__); \
     }
 
+/** Debug print macro to output verbose debug */
 #define JSE_VERBOSE(...) \
     if (jse_verbosity >= JSE_DEBUG_LEVEL_VERBOSE) { \
         jse_debugPrint(__FILE__, __LINE__, "VERBOSE", __VA_ARGS__); \
     }
 
+/** Debug print macro to output function entry information */
 #define JSE_ENTER(...) \
     if (jse_enter_exit) { \
         jse_debugPrint(__FILE__, __LINE__, "ENTER", __VA_ARGS__); \
     }
 
+/** Debug print macro to output function exit information */
 #define JSE_EXIT(...) \
     if (jse_enter_exit) { \
         jse_debugPrint(__FILE__, __LINE__, "EXIT", __VA_ARGS__); \
     }
 
+/**
+ * @brief Debug macro that asserts an expression is true
+ *
+ * @param EXP the expression
+ */
 #define JSE_ASSERT(EXP) \
     if (!(EXP)) { \
         jse_debugPrint(__FILE__, __LINE__, "ASSERT", #EXP); \

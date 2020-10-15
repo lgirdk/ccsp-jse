@@ -38,7 +38,7 @@
 static int ref_count = 0;
 
 /**
- * Returns the cipher engine based upon the index
+ * @brief Returns the cipher engine based upon the index
  *
  * @param idx the index
  * @return the engine or NULL if idx is invalid
@@ -84,11 +84,11 @@ static const EVP_CIPHER * getCipher(size_t idx)
 }
 
 /**
- * Throws an appropriate error based on a (en/de)crypt error.
+ * @brief Throws an appropriate error based on a (en/de)crypt error.
  *
- * THIS FUNCTION NEVER RETURNS!
+ * NEVER RETURNS!
  *
- * @oaram ctx the duktape context
+ * @param ctx the duktape context
  * @param error the error code
  * @param name the function name
  */
@@ -115,7 +115,7 @@ static void throwCryptError(duk_context * ctx, int error, const char * name)
 }
 
 /**
- * Encrypts an input buffer
+ * @brief Encrypts an input buffer
  *
  * This method encrypts inlen bytes of the input buffer pointed to by inbuf.
  * It returns a pointer to a new buffer, containing the encrypted data, in
@@ -235,7 +235,7 @@ static int encrypt(
 }
 
 /**
- * Decrypts an input buffer
+ * @brief Decrypts an input buffer
  *
  * This method decrypts inlen bytes of the input buffer pointed to by inbuf.
  * It returns a pointer to a new buffer, containing the decrypted data, in
@@ -252,9 +252,7 @@ static int encrypt(
  *                                    cipher.
  *   ERROR_CRYPT_DEFAULT            - any other error.
  *
- * @param inbuf a pointer to the input bufferThe first three are required and
- * are the buffer to decrypt, the key, and the initialisation vector.
- * The last argument is the decryption type. It defaults to AES 256 CBC.
+ * @param inbuf a pointer to the input buffer
  * @param inlen the size of the input data
  * @param poutbuf a pointer to return a pointer to the output buffer
  * @param poutlen a pointer to return the size of the output data
@@ -356,7 +354,7 @@ static int decrypt(
 }
 
 /**
- * A JavaScript encryption binding.
+ * @brief A JavaScript encryption binding.
  *
  * This binds a JavaScript function that encrypts a value in to a buffer.
  * The parameters passed are:
@@ -369,7 +367,8 @@ static int decrypt(
  * The return value is a buffer object containing the encrypted data.
  *
  * @param ctx the duktape context
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 duk_ret_t do_encrypt(duk_context * ctx)
 {
@@ -463,7 +462,7 @@ duk_ret_t do_encrypt(duk_context * ctx)
 }
 
 /**
- * The core of JavaScript decryption binding.
+ * @brief The core of JavaScript decryption binding.
  *
  * This implements the duktape parameter parsing and validation before
  * calling decrypt() to decrypt a buffer in to plaintext. The parameters
@@ -476,7 +475,8 @@ duk_ret_t do_encrypt(duk_context * ctx)
  *
  * @param ctx the duktape context
  * @param asstring true to return a string, otherwise a buffer
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 duk_ret_t do_decrypt(duk_context * ctx, bool asstring)
 {
@@ -576,7 +576,7 @@ duk_ret_t do_decrypt(duk_context * ctx, bool asstring)
 }
 
 /**
- * A JavaScript decryption binding.
+ * @brief A JavaScript decryption binding.
  *
  * This binds a JavaScript function that decrypts a buffer in to a string.
  * The function takes four arguments. The parameters passed are:
@@ -590,7 +590,7 @@ duk_ret_t do_decrypt(duk_context * ctx, bool asstring)
  * responsibility of the caller to ensure it is printable.
  *
  * @param ctx the duktape context
- * @return an error status or 0.
+ * @return 1 or a negative error status.
  */
 duk_ret_t do_decryptToString(duk_context * ctx)
 {
@@ -602,7 +602,7 @@ duk_ret_t do_decryptToString(duk_context * ctx)
 }
 
 /**
- * A JavaScript decryption binding.
+ * @brief A JavaScript decryption binding.
  *
  * This binds a JavaScript function that decrypts a buffer in to a buffer.
  * The function takes four arguments.  The parameters passed are:
@@ -615,7 +615,8 @@ duk_ret_t do_decryptToString(duk_context * ctx)
  * The return value is a buffer object containing the decrypted data.
  *
  * @param ctx the duktape context
- * @return an error status or 0.
+ *
+ * @return 1 or a negative error status.
  */
 duk_ret_t do_decryptToBuffer(duk_context * ctx)
 {
@@ -627,9 +628,10 @@ duk_ret_t do_decryptToBuffer(duk_context * ctx)
 }
 
 /**
- * Binds a set of JavaScript extensions
+ * @brief Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
+ *
  * @return an error status or 0.
  */
 duk_int_t jse_bind_crypt(jse_context_t * jse_ctx)
@@ -670,7 +672,7 @@ duk_int_t jse_bind_crypt(jse_context_t * jse_ctx)
 }
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * Actually just decrements the reference count. Needed for fast cgi
  * since the same process will rebind. Not unbinding is not an issue

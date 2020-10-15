@@ -35,7 +35,7 @@ int jse_verbosity = 0;
 bool jse_enter_exit = false;
 
 /**
- * Outputs a line of debug.
+ * @brief Outputs a line of debug.
  *
  * @param file the source file name
  * @param line the source line number
@@ -65,7 +65,7 @@ void jse_debugPrint(const char *file, int line, const char* levelStr, const char
 }
 
 /**
- * Returns the textual debug level for an integer debug level.
+ * @brief Returns the textual debug level for an integer debug level.
  *
  * @param level the debug level
  * @return the textual debug level

@@ -151,7 +151,7 @@ struct file_object_s
 };
 
 /**
- * Sets the value of a cookie.
+ * @brief Sets the value of a cookie.
  * 
  * @param cookie the cookie.
  * @param name the name.
@@ -173,7 +173,7 @@ static void cookie_set(cookie_data_t * cookie, char * name, char * value,
 }
 
 /**
- * Destroys a cookie freeing the memory.
+ * @brief Destroys a cookie freeing the memory.
  * 
  * @param cookie a pointer to the cookie
  */
@@ -201,7 +201,7 @@ static void cookie_destroy(cookie_data_t * cookie)
 }
 
 /**
- * Tests for legal header names.
+ * @brief Tests for legal header names.
  * 
  * @param name the header name.
  * @return true if legal
@@ -229,7 +229,7 @@ static bool header_validate(char * name)
 }
 
 /**
- * Sets a header in the header list.
+ * @brief Sets a header in the header list.
  *
  * @param name the header name.
  * @param value the header value.
@@ -289,7 +289,7 @@ static int header_set(char * name, char * value)
 }
 
 /**
- * Returns an appropriate HTTP status message for a status code.
+ * @brief Returns an appropriate HTTP status message for a status code.
  * 
  * @param status the status code.
  * @return the message.
@@ -352,7 +352,7 @@ static char* msg_for_http_status(int status)
 }
 
 /**
- * Returns the status line to the server.
+ * @brief Returns the status line to the server.
  * 
  * @param status the HTTP status.
  */
@@ -362,7 +362,7 @@ static void return_http_status(int status)
 }
 
 /**
- * Returns an error to the server.
+ * @brief Returns an error to the server.
  *
  * @param jse_ctx the jse context.
  * @param status the HTTP status.
@@ -398,7 +398,7 @@ static void return_error(jse_context_t *jse_ctx, int status, const char* mimetyp
 }
 
 /**
- * Sets any cookies before creating the HTTP header.
+ * @brief Sets any cookies before creating the HTTP header.
  *
  * @param jse_ctx the jse context.
  */
@@ -419,7 +419,7 @@ static void set_any_cookies(jse_context_t *jse_ctx)
 }
 
 /**
- * Returns a response to the server.
+ * @brief Returns a response to the server.
  *
  * @param status the HTTP status.
  * @param contenttype the content type.
@@ -460,13 +460,13 @@ static void return_response(jse_context_t *jse_ctx, int status, const char* cont
     last_print_item = NULL;
 }
 
+__attribute__((noreturn))
 /**
- * Handle fatal duktape errors.
+ * @brief Handle fatal duktape errors.
  *
  * @param userdata a pointer to the jse context as a void*.
  * @param msg the error message.
  */
-__attribute__((noreturn))
 static void handle_fatal_error(void* userdata, const char *msg)
 {
     jse_context_t *jse_ctx = (jse_context_t*)userdata;
@@ -492,7 +492,7 @@ static void handle_fatal_error(void* userdata, const char *msg)
 }
 
 /**
- * Initialise duktape
+ * @brief Initialise duktape
  *
  * @param jse_ctx the jse context.
  *
@@ -510,7 +510,7 @@ static duk_context *init_duktape(jse_context_t *jse_ctx)
 }
 
 /**
- * Cleanup duktape
+ * @brief Cleanup duktape
  *
  * @param jse_ctx the jse context.
  */
@@ -524,7 +524,7 @@ static void cleanup_duktape(jse_context_t *jse_ctx)
 }
 
 /**
- * Runs JavaScript code provided via stdin.
+ * @brief Runs JavaScript code provided via stdin.
  *
  * In case of an Error, an Error object remains on the stack when the
  * function exits.
@@ -560,7 +560,7 @@ static duk_int_t run_stdin(jse_context_t *jse_ctx)
 }
 
 /**
- * Runs JavaScript code provided in a file.
+ * @brief Runs JavaScript code provided in a file.
  *
  * In case of an Error, an Error object remains on the stack when the
  * function exits.
@@ -599,7 +599,7 @@ static duk_int_t run_file(jse_context_t * jse_ctx)
 }
 
 /**
- * Prints a string to the output.
+ * @brief Prints a string to the output.
  *
  * This function prints a string to the output. Typically this is standard
  * out. When handling HTTP requests output has to be delayed until the
@@ -607,7 +607,7 @@ static duk_int_t run_file(jse_context_t * jse_ctx)
  * once the header has been generated.
  *
  * @param ctx the duktape context.
- * @return the number of values on the stack or -1 for an error.
+ * @return 0 or a negative error status.
  */
 static duk_ret_t do_print(duk_context *ctx)
 {
@@ -697,13 +697,14 @@ static duk_ret_t do_print(duk_context *ctx)
 }
 
 /**
- * Sets the HTTP status.
+ * @brief Sets the HTTP status.
  *
  * This function sets the HTTP status. It expects one integer on the duktape
  * stack that specifies the status value.
  *
  * @param ctx the duktape context.
- * @return the number of values on the stack or -1 for an error.
+ *
+ * @return 0 or a negative error status.
  */
 static duk_ret_t do_setHTTPStatus(duk_context * ctx)
 {
@@ -731,13 +732,14 @@ static duk_ret_t do_setHTTPStatus(duk_context * ctx)
 }
 
 /**
- * Sets the mimetype.
+ * @brief Sets the mimetype.
  *
  * This function sets the content type. It expects one string on the duktape
  * stack that specifies the content type.
  *
  * @param ctx the duktape context.
- * @return the number of values on the stack or -1 for an error.
+ *
+ * @return 0 or a negative error status.
  */
 static duk_ret_t do_setContentType(duk_context * ctx)
 {
@@ -780,7 +782,7 @@ static duk_ret_t do_setContentType(duk_context * ctx)
 }
 
 /**
- * Sets the cookie value.
+ * @brief Sets the cookie value.
  *
  * This function sets the cookie value. It expects five arguments, the
  * cookie name, the cookie value, an expiry time in seconds (0 expire
@@ -788,7 +790,8 @@ static duk_ret_t do_setContentType(duk_context * ctx)
  * null), and a boolean indicating a secure cookie or not.
  *
  * @param ctx the duktape context.
- * @return the number of values on the stack or -1 for an error.
+ *
+ * @return 0 or a negative error status.
  */
 static duk_ret_t do_setCookie(duk_context * ctx)
 {
@@ -925,7 +928,7 @@ static duk_ret_t do_setCookie(duk_context * ctx)
 }
 
 /**
- * Sets or adds an HTTP header
+ * @brief Sets or adds an HTTP header
  * 
  * This function sets or adds a header. The function expects two strings
  * the first being the header name. The second being the value. If the
@@ -933,7 +936,8 @@ static duk_ret_t do_setCookie(duk_context * ctx)
  * name is case insensitive.
  *
  * @param ctx the duktape context.
- * @return the number of values on the stack or -1 for an error.
+ *
+ * @return 0 or a negative error status.
  */
 static duk_ret_t do_setHeader(duk_context * ctx)
 {
@@ -1008,7 +1012,7 @@ static duk_ret_t do_setHeader(duk_context * ctx)
 }
 
 /**
- * Binds external functions to the JavaScript engine.
+ * @brief Binds external functions to the JavaScript engine.
  *
  * @param jse_ctx the jse context.
  * @return an error code or 0.
@@ -1068,7 +1072,7 @@ static duk_int_t bind_functions(jse_context_t *jse_ctx)
 }
 
 /**
- * Unbinds functions from the javascript engine.
+ * @brief Unbinds functions from the javascript engine.
  *
  * @param jse_ctx the jse context.
  */
@@ -1088,16 +1092,17 @@ static void unbind_functions(jse_context_t *jse_ctx)
 }
 
 /**
- * Utility method that adds an environment variable as an object property
+ * @brief Utility method that adds an environment variable as an object property
  *
  * Given the object at idx, this function adds the environment variable
  * env, given it is defined, as a property called env with the value of
  * the environment variable env.
  *
  * @param ctx the duktape context.
- * @param idx the object index.
+ * @param idx the request object index.
  * @param env the environment variable name.
- * @return an error code or 0.
+ *
+ * @return 0.
  */
 static duk_int_t add_env_as_object_property(duk_context *ctx, duk_idx_t idx, const char* env)
 {
@@ -1116,6 +1121,17 @@ static duk_int_t add_env_as_object_property(duk_context *ctx, duk_idx_t idx, con
     return 0;
 }
 
+/**
+ * @brief Utility method that adds the query parameters to the request object
+ *
+ * Given the object at idex, this function adds a sub-object "QueryParameters"
+ * and adds properties to that object with the name and value of each of the
+ * query parameters parsed by QDecoder.
+ *
+ * @param ctx the duktape context.
+ * @param req the QDecoder request list.
+ * @param idx the request object index.
+ */
 static void create_request_object_params(duk_context *ctx, qentry_t *req, duk_int_t idx)
 {
     struct file_object_s *file_objs = NULL;
@@ -1236,6 +1252,15 @@ static void create_request_object_params(duk_context *ctx, qentry_t *req, duk_in
     JSE_EXIT("create_request_object_params()")
 }
 
+/**
+ * @brief Adds the CGI variables as properties to the request object.
+ *
+ * This function adds properties to the "Request" object with the name
+ * and value of each of the CGI environment variables.
+ *
+ * @param ctx the duktape context.
+ * @param idx the request object index.
+ */
 static void create_request_object_envs(duk_context *ctx, duk_int_t idx)
 {
     add_env_as_object_property(ctx, idx, "DOCUMENT_ROOT");
@@ -1259,13 +1284,15 @@ static void create_request_object_envs(duk_context *ctx, duk_int_t idx)
 }
 
 /**
- * Creates a request object.
+ * @brief Creates a request object.
  *
- * The query string parameters are passed as properties in an object on
- * the duktape stack.
+ * Creates a global JavaScipt object called "Request" which comprises the
+ * HTTP request data including the environment variables, query parameters
+ * etc.
  *
  * @param jse_ctx the jse context.
- * @return an error code or 0.
+ *
+ * @return 0.
  */
 static duk_int_t create_request_object(jse_context_t *jse_ctx)
 {
@@ -1282,7 +1309,7 @@ static duk_int_t create_request_object(jse_context_t *jse_ctx)
 }
 
  /**
- * Returns a simple HTTP server error response.
+ * @brief Returns a simple HTTP server error response.
  *
  * @param status the HTTP status.
  * @param msg the message.
@@ -1295,7 +1322,7 @@ static void basic_return_error(int status)
 }
 
 /**
- * Handle an HTTP request
+ * @brief Handle an HTTP request
  *
  * A note on error return codes.
  *
@@ -1449,9 +1476,11 @@ static void help(const char* name)
 "\n"
 "Mandatory arguments to long options are mandatory for short options too.\n"
 "  -c, --cookies            Handle cookie requests.\n"
+"  -e, --enter-exit         Enable enter-exit debug logging.\n"
 "  -g, --get                Handle GET requests.\n"
 "  -h, --help               Display this help.\n"
 "  -p, --post               Handle POST requests.\n"
+"  -u, --upload-dir         Override the default file upload directory.\n"
 "  -v, --verbose            Verbosity. Multiple uses increases vebosity.\n"
 #ifdef BUILD_RDK
 "  -n, --no-ccsp            Do not initialise CCSP.\n"
@@ -1465,6 +1494,11 @@ static void help(const char* name)
 
 /**
  * main!
+ * 
+ * @param argc the argument count
+ * @param argv the array of argument strings
+ *
+ * @return 0 or an error code.
  */
 int main(int argc, char **argv)
 {

@@ -28,23 +28,28 @@ extern "C" {
 #endif
 
 #ifndef TEMP_FAILURE_RETRY
+/** A EINTR retry macro */
 #define TEMP_FAILURE_RETRY(exp) \
     do {} while (((long)(exp)) == -1 && errno == EINTR)
 #endif
 
 #define JSE_MAX_FILE_SIZE (128 * 1024)
 
-/* Context for processing the request. Used by the fatal error handler */
+/** Context for processing the request. Used by the fatal error handler */
 struct jse_context_s {
+    /** The filename */
     char * filename;
+    /** The Duktape content */
     duk_context * ctx;
+    /** The head of the request data */
     qentry_t * req;
 };
 
+/** The JSE context type */
 typedef struct jse_context_s jse_context_t;
 
 /**
- * Create a new JSE context.
+ * @brief Create a new JSE context.
  *
  * @param filename the script filename.
  * @return the context or NULL on error.
@@ -52,14 +57,14 @@ typedef struct jse_context_s jse_context_t;
 jse_context_t *jse_context_create(char * filename);
 
 /**
- * Destroy a JSE context.
+ * @brief Destroy a JSE context.
  *
  * @param jse_ctx the jse context.
  */
 void jse_context_destroy(jse_context_t *jse_ctx);
 
 /**
- * A single read from a file descriptor in to a buffer resizing if needed.
+ * @brief A single read from a file descriptor in to a buffer resizing if needed.
  *
  * This function reads from fd updating the buffer pointed to by pbuffer.
  * The data is stored at the offset pointed to by poff. The size of the
@@ -81,7 +86,7 @@ void jse_context_destroy(jse_context_t *jse_ctx);
 ssize_t jse_read_fd_once(int fd, void ** const pbuffer, off_t * const poff, size_t * const psize);
 
 /**
- * Read from a file descriptor.
+ * @brief Read from a file descriptor.
  *
  * This function reads an unknown number of bytes from a file descriptor.
  * It does this by creating a buffer and resizing it as necessary so can
@@ -96,7 +101,7 @@ ssize_t jse_read_fd_once(int fd, void ** const pbuffer, off_t * const poff, size
 ssize_t jse_read_fd(int fd, void ** const pbuffer, size_t * const psize);
 
 /**
- * Reads a file in to a buffer.
+ * @brief Reads a file in to a buffer.
  *
  * Reads a file in to a buffer allocating the storage from the heap. The
  * variables pointed to by pbuffer and psize are updated with the buffer
@@ -112,7 +117,7 @@ ssize_t jse_read_fd(int fd, void ** const pbuffer, size_t * const psize);
 ssize_t jse_read_file(const char * const filename, void ** const pbuffer, size_t * const psize);
 
 /**
- * Creates a sub directory and all the intermediate directories.
+ * @brief Creates a sub directory and all the intermediate directories.
  *
  * Creates a sub directory and all the intermediate directories. If the
  * directory currently exists that is not an error. If a file exists with

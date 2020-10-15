@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 /**
- * Binds a set of JavaScript extensions
+ * @brief Binds a set of JavaScript extensions
  *
  * @param jse_ctx the jse context.
  * @return an error status or 0.
@@ -34,7 +34,7 @@ extern "C" {
 duk_int_t jse_bind_jsprocess(jse_context_t * jse_ctx);
 
 /**
- * Unbinds the JavaScript extensions.
+ * @brief Unbinds the JavaScript extensions.
  *
  * @param jse_ctx the jse context.
  */
