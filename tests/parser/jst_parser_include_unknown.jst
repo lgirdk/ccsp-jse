@@ -1,0 +1,25 @@
+<?%
+
+//jst parser should skip all these and copy into output verbatim
+
+include("path1');
+include('path1");
+include;
+include(;
+include();
+include(");
+include(');
+
+include("path1')
+include('path1")
+include
+include(
+include()
+include(")
+include(')
+
+includeFoo
+$include
+$include(
+
+?>

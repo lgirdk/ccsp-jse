@@ -1,0 +1,24 @@
+<?%
+
+//jst parser should skip all these and copy into output verbatim
+
+var path1 = "include/once.jst"
+include(path1);
+include( path1);
+include(path1 );
+include( path1 );
+
+var $path2 = "include/once.jst"
+include($path2);
+include( $path2);
+include($path2 );
+include( $path2 );
+
+include($path1+$path2);
+
+include("include/" + "once.jst");
+include( "include/" + "once.jst");
+include("include/" + "once.jst" );
+include( "include/" + "once.jst" );
+
+?>
