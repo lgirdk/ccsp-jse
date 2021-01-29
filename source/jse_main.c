@@ -85,6 +85,7 @@ static bool cosa_initialised = false;
 #define HTTP_STATUS_IM_A_TEAPOT            418
 #define HTTP_STATUS_INTERNAL_SERVER_ERROR  500
 #define HTTP_STATUS_NOT_IMPLEMENTED        501
+#define HTTP_STATUS_SERVICE_UNAVAILABLE    503
 
 /* The environment. See man environ */
 extern char **environ;
@@ -349,6 +350,9 @@ static char* msg_for_http_status(int status)
             break;
         case HTTP_STATUS_UNAUTHORIZED:
             msg = "Unauthorized";
+            break;
+        case HTTP_STATUS_SERVICE_UNAVAILABLE:
+            msg = "Service Unavailable";
             break;
         default:
             JSE_WARNING("Unrecognised status code: %d", status)
