@@ -102,7 +102,7 @@ if(BUILD_RDK)
     ${JSE_SOURCES}
     source/jse_cosa_error.c
     source/jse_cosa.c)
-  set(JSE_LIBS "${JSE_LIBS} -lccsp_common -ldbus-1")
+  set(JSE_LIBS "${JSE_LIBS} -lccsp_common -ldbus-1 -lrbus")
 endif(BUILD_RDK)
 
 if(ENABLE_LIBXML2)
