@@ -24,6 +24,8 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <string.h>
+#include <libgen.h>
+#include <limits.h>
 
 #include "jse_debug.h"
 #include "jse_jscommon.h"
@@ -34,7 +36,7 @@ static int ref_count = 0;
 
 /**
  * @brief Runs the code stored in a buffer, optionally identified by a filename.
- * 
+ *
  * @param ctx the duktape content.
  * @param buffer the buffer.
  * @param size the size of the context.
@@ -81,7 +83,7 @@ static duk_int_t run_buffer(duk_context * ctx, const char * buffer, size_t size,
             /* pop the coerced string from the stack */
             duk_pop(ctx);
         }
-    } 
+    }
 
     /* In case of error, an Error() object is left on the stack */
     JSE_EXIT("run_buffer()=%d", ret)
@@ -460,6 +462,7 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
     duk_ret_t ret = DUK_RET_ERROR;
     duk_int_t count = duk_get_top(ctx);
     const char * filename = NULL;
+    pid_t pid = getpid();
 
     JSE_ENTER("do_write_as_file(%p)", ctx)
 
@@ -485,6 +488,12 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
             }
             else
             {
+                char * fn = strdup(filename);
+                char * path = dirname(fn);
+                char * tmp_filename = malloc(PATH_MAX);
+                snprintf(tmp_filename, PATH_MAX, "%s/tmp_%ld", path, (long) pid);
+                free(fn);
+
                 /* TODO: Handle other data types eg buffers */
                 duk_int_t type = duk_get_type(ctx, 1);
                 if (DUK_TYPE_BOOLEAN == type || DUK_TYPE_NUMBER == type ||
@@ -502,12 +511,13 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
                         }
                     }
 
-                    JSE_VERBOSE("Opening %s %d", filename, flags)
-                    fd = open(filename, flags, S_IRWXU);
+                    JSE_VERBOSE("Opening %s %d", tmp_filename, flags)
+                    fd = open(tmp_filename, flags, S_IRWXU);
                     if (fd == -1)
                     {
+                        free(tmp_filename);
                         /* This does not return */
-                        JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", filename, strerror(errno));
+                        JSE_THROW_POSIX_ERROR(ctx, errno, "%s", strerror(errno));
                     }
                     else
                     {
@@ -539,11 +549,22 @@ static duk_ret_t do_write_as_file(duk_context * ctx)
 
                         if (bytes == -1) {
                             close(fd);
+                            free(tmp_filename);
                             /* This does not return */
-                            JSE_THROW_POSIX_ERROR(ctx, errno, "%s: %s", filename, strerror(errno));
+                            JSE_THROW_POSIX_ERROR(ctx, errno, "%s", strerror(errno));
                         }
 
                         close(fd);
+
+                        int rn = -1;
+                        rn = rename(tmp_filename, filename);
+                        if (rn == -1) {
+                            free(tmp_filename);
+                            /* This does not return */
+                            JSE_THROW_POSIX_ERROR(ctx, errno, "%s", strerror(errno));
+                        }
+                        free(tmp_filename);
+
                         ret = 0;
                     }
                 }
@@ -649,7 +670,7 @@ static duk_ret_t do_create_directory(duk_context * ctx)
  * @brief The JavaScript binding for listDirectory()
  *
  * This JS function lists the directory specified in the string argument.
- * This function returns all items in the directory, files, 
+ * This function returns all items in the directory, files,
  * sub-durectories, symlinks etc. It does not recurse.
  *
  * @param ctx the duktape context.
@@ -770,7 +791,7 @@ duk_ret_t do_sleep(duk_context * ctx)
         do
         {
             delay = sleep(delay);
-        } 
+        }
         while (delay > 0);
 
         /* Nothing is returned on the value stack */
@@ -826,7 +847,7 @@ duk_ret_t do_usleep(duk_context * ctx)
             /* Does not return */
             JSE_THROW_POSIX_ERROR(ctx, errno, "nanosleep() failed: %s", strerror(errno));
         }
-        
+
         ret = 0;
     }
     else
