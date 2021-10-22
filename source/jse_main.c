@@ -119,7 +119,7 @@ static header_item_t *first_header_item = NULL;
 /* Linked list of 'printed' items */
 struct print_buffer_item_s
 {
-    const void * string;
+    void * string;
     size_t length;
     struct print_buffer_item_s * next;
 };
@@ -466,7 +466,7 @@ static void return_response(jse_context_t *jse_ctx, int status, const char* cont
         // So we can handle strings with null characters.
         fwrite(item->string, item->length, 1, stdout);
         first_print_item = item->next;
-        
+        free(item->string);
         free(item);
     }
     last_print_item = NULL;
@@ -1592,6 +1592,17 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
             }
             else
             {
+                /* Iterate through the buffer of printed content. */
+                while (first_print_item != NULL)
+                {
+                    print_buffer_item_t * item = first_print_item;
+
+                    first_print_item = item->next;
+                    free(item->string);
+                    free(item);
+                }
+                last_print_item = NULL;
+
                 /* In case of an error, an error object is on the duktape stack */
                 return_error(jse_ctx, HTTP_STATUS_INTERNAL_SERVER_ERROR, "text/html", 
                     "<html><head><title>Internal server error</title></head><body>%s</body></html>",
