@@ -1611,6 +1611,10 @@ static duk_int_t handle_request(jse_context_t *jse_ctx)
                 duk_pop(jse_ctx->ctx);
             }
 
+            /* Gets freed on subsequent requests but it's no longer relevent once the request has been handled */
+            free(http_contenttype);
+            http_contenttype = NULL;
+
             ret = 0;
         }
         /* An HTTP method was set but we failed to parse. */
@@ -1902,6 +1906,8 @@ int main(int argc, char **argv)
 
             arg = strtok(NULL, " ");
         }
+        // done processing env
+        free(env);
     }
 
     // Post only
@@ -1913,6 +1919,8 @@ int main(int argc, char **argv)
 
         if (jse_mkdir(upload_dir))
         {
+            free(filename);
+            filename = NULL;
             exit(EXIT_FATAL);
         }
     }
@@ -1979,6 +1987,10 @@ int main(int argc, char **argv)
                 JSE_WARNING("jse_cosa_init() failed. Will try again later!");
 
                 basic_return_error(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+
+                free(filename);
+                filename = NULL;
+
                 continue;
             }
             else
@@ -2003,11 +2015,16 @@ int main(int argc, char **argv)
                 cleanup_duktape(jse_ctx);
             }
 
+            // frees filename
             jse_context_destroy(jse_ctx);
+            filename = NULL;
         }
         else
         {
             ret = DUK_ERR_ERROR;
+
+            free(filename);
+            filename = NULL;
         }
 
         if ((ret != 0) && (process_get || process_post || process_cookie))
