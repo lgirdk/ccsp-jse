@@ -2038,6 +2038,13 @@ int main(int argc, char **argv)
     }
 #endif
 
+#ifdef BUILD_RDK
+    /* If we successfully initialised CCSP Cosa, shut it down */
+    if (init_ccsp && cosa_initialised) {
+        jse_cosa_shutdown();
+    }
+#endif
+
     /* An error is returned only when it hasn't already been handled. */
     if (ret != 0)
     {
