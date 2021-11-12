@@ -180,6 +180,7 @@ static int UiDbusClientGetDestComponent(char *pObjName, char **ppDestComponentNa
 
     if (ret == CCSP_SUCCESS)
     {
+        // We only support handling a single component
         *ppDestComponentName = ppComponents[0]->componentName;
         ppComponents[0]->componentName = NULL;
         *ppDestPath = ppComponents[0]->dbusPath;
@@ -187,6 +188,14 @@ static int UiDbusClientGetDestComponent(char *pObjName, char **ppDestComponentNa
 
         while (size)
         {
+            if (ppComponents[size - 1]->componentName)
+            {
+                free(ppComponents[size - 1]->componentName);
+            }
+            if (ppComponents[size - 1]->dbusPath)
+            {
+                free(ppComponents[size - 1]->dbusPath);
+            }
             if (ppComponents[size - 1]->remoteCR_dbus_path)
             {
                 free(ppComponents[size - 1]->remoteCR_dbus_path);
@@ -198,6 +207,7 @@ static int UiDbusClientGetDestComponent(char *pObjName, char **ppDestComponentNa
             free(ppComponents[size - 1]);
             size--;
         }
+        free(ppComponents);
         return 0;
     }
     else
@@ -584,6 +594,9 @@ static duk_ret_t getStr(duk_context *ctx)
                                                          &size,
                                                          &parameterVal);
 
+            free(ppDestComponentName);
+            free(ppDestPath);
+
             if (CCSP_SUCCESS != returnStatus)
             {
                 free_parameterValStruct_t(bus_handle, size, parameterVal);
@@ -704,6 +717,8 @@ static duk_ret_t setStr(duk_context *ctx)
                 if (returnStatus != CCSP_SUCCESS)
                 {
                     free(valcopy);
+                    free(ppDestComponentName);
+                    free(ppDestPath);
 
                     /* Does not return */
                     JSE_THROW_COSA_ERROR(ctx, returnStatus,
@@ -719,6 +734,9 @@ static duk_ret_t setStr(duk_context *ctx)
                     if (size != 1 || strcmp(structGet[0]->parameterName, dotstr) != 0)
                     {
                         JSE_ERROR("Miss match!")
+
+                        free(ppDestComponentName);
+                        free(ppDestPath);
                     }
                     else
                     {
@@ -740,6 +758,8 @@ static duk_ret_t setStr(duk_context *ctx)
                         /* Per C99 free(NULL) is a NOP */
                         free(pFaultParameterNames);
                         free_parameterValStruct_t(bus_handle, size, structGet);
+                        free(ppDestComponentName);
+                        free(ppDestPath);
 
                         if (CCSP_SUCCESS != returnStatus)
                         {
@@ -836,6 +856,9 @@ static duk_ret_t getInstanceIds(duk_context *ctx)
                     dotstr,
                     &InstNum,
                     &pInstNumList);
+
+            free(ppDestComponentName);
+            free(ppDestPath);
 
             if (returnStatus != CCSP_SUCCESS)
             {
@@ -935,6 +958,9 @@ static duk_ret_t addTblObj(duk_context *ctx)
                     dotstr,
                     &returnInstNum);
 
+            free(ppDestComponentName);
+            free(ppDestPath);
+
             if (returnStatus != CCSP_SUCCESS)
             {
                 /* Does not return */
@@ -1009,6 +1035,9 @@ static duk_ret_t delTblObj(duk_context *ctx)
                     ppDestPath,
                     0,
                     dotstr);
+
+            free(ppDestComponentName);
+            free(ppDestPath);
 
             if (returnStatus != CCSP_SUCCESS)
             {
@@ -1102,6 +1131,9 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
         ppParamNameList = (char **)calloc(paramCount, sizeof(char *));
         if (ppParamNameList == NULL)
         {
+            free(pDestComponentName);
+            free(pDestPath);
+
             /* Does not return */
             JSE_THROW_COSA_ERROR(ctx, CCSP_ERR_MEMORY_ALLOC_FAIL,
                 "calloc() failed: %s", strerror(errno));
@@ -1154,6 +1186,9 @@ static duk_ret_t DmExtGetStrsWithRootObj(duk_context *ctx)
                 paramCount,
                 &valCount, /* valCount could be larger than paramCount */
                 &ppParameterVal);
+
+        free(pDestComponentName);
+        free(pDestPath);
 
         if (CCSP_SUCCESS != returnStatus)
         {
@@ -1223,7 +1258,7 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
 {
     duk_ret_t ret = DUK_RET_ERROR;
 
-    int returnStatus = CCSP_SUCCESS;
+    int returnStatus = 0;
     char *pRootObjName;
     char subSystemPrefix[6] = {0};
     char *pDestComponentName = NULL;
@@ -1289,6 +1324,9 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
         pParameterValList = (parameterValStruct_t *)calloc(paramCount, sizeof(parameterValStruct_t));
         if (pParameterValList == NULL)
         {
+            free(pDestComponentName);
+            free(pDestPath);
+
             /* Does not return */
             JSE_THROW_COSA_ERROR(ctx, CCSP_ERR_MEMORY_ALLOC_FAIL,
                 "calloc() failed: %s", strerror(errno));
@@ -1308,6 +1346,8 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
             if (!duk_is_array(ctx, -1))
             {
                 free(pParameterValList);
+                free(pDestComponentName);
+                free(pDestPath);
 
                 /* Does not return */
                 JSE_THROW_TYPE_ERROR(ctx, "Item is not an array!");
@@ -1315,6 +1355,8 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
             else if (get_array_length(ctx, -1) != 3)
             {
                 free(pParameterValList);
+                free(pDestComponentName);
+                free(pDestPath);
 
                 /* Does not return */
                 JSE_THROW_RANGE_ERROR(ctx,
@@ -1458,7 +1500,7 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
         /* pop main array */
         duk_pop(ctx);
 
-        if (CCSP_SUCCESS != returnStatus)
+        if (0 == returnStatus)
         {
             returnStatus =
                 CcspBaseIf_setParameterValues(
@@ -1482,6 +1524,8 @@ static duk_ret_t DmExtSetStrsWithRootObj(duk_context *ctx)
         }
 
         free(pParameterValList);
+        free(pDestComponentName);
+        free(pDestPath);
 
         if (CCSP_SUCCESS != returnStatus)
         {
@@ -1585,6 +1629,9 @@ static duk_ret_t DmExtGetInstanceIds(duk_context *ctx)
                 dotstr,
                 &InstNum,
                 &pInstNumList);
+
+        free(ppDestComponentName);
+        free(ppDestPath);
 
         if (returnStatus != CCSP_SUCCESS)
         {
