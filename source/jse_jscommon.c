@@ -53,7 +53,15 @@ static duk_int_t run_buffer(duk_context * ctx, const char * buffer, size_t size,
 
     JSE_ENTER("run_buffer(%p,%p,%u,\"%s\")", ctx, buffer, size, filename)
 
-    if (filename != NULL)
+    // Check if buffer starts with the bytecode marker byte which never occurs in a valid extended UTF-8 string.
+    if (buffer[0] == (char)0xbf)
+    {
+        void *bc = duk_push_fixed_buffer(ctx, size);
+        memcpy(bc, (const void *)buffer, size);
+        duk_load_function(ctx);
+        ret = 0;
+    }
+    else if (filename != NULL)
     {
         duk_push_string(ctx, filename);
         ret = duk_pcompile_lstring_filename(ctx, DUK_COMPILE_SHEBANG, buffer, size);
