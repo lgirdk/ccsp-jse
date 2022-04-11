@@ -49,8 +49,7 @@ if(BUILD_RDK)
   message(STATUS, "rdk build")
   set (CMAKE_C_FLAGS
      "${CMAKE_C_FLAGS} \
-     -D_ANSC_LINUX \
-     -D_ANSC_USER -D_ANSC_LITTLE_ENDIAN_ -DBUILD_RDK")
+     -DBUILD_RDK")
 else(BUILD_RDK)
   message(STATUS, "generic build")
 endif(BUILD_RDK)
